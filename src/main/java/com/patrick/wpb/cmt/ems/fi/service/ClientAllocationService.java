@@ -8,7 +8,7 @@ import com.patrick.wpb.cmt.ems.fi.dto.ClientAllocationBreakdownRequest;
 import com.patrick.wpb.cmt.ems.fi.entity.ClientAllocationAmendLogEntity;
 import com.patrick.wpb.cmt.ems.fi.entity.ClientAllocationBreakdownEntity;
 import com.patrick.wpb.cmt.ems.fi.entity.TraderOrderEntity;
-import com.patrick.wpb.cmt.ems.fi.enums.AllocationStatus;
+import com.patrick.wpb.cmt.ems.fi.enums.ClientAllocationStatus;
 import com.patrick.wpb.cmt.ems.fi.enums.AmendmentObjectType;
 import com.patrick.wpb.cmt.ems.fi.enums.IPOOrderStatus;
 import com.patrick.wpb.cmt.ems.fi.enums.IPOOrderSubStatus;
@@ -87,11 +87,17 @@ public class ClientAllocationService {
 
         validateFinalAllocations(order.getOrderQuantity(), proposedBreakdowns);
 
-        String beforeJson = toJson(breakdownRepository.findByOrderClientOrderId(clientOrderId).stream()
+        // Get existing breakdowns for before state
+        List<ClientAllocationBreakdownEntity> existingBreakdowns = breakdownRepository.findByOrderClientOrderId(clientOrderId);
+        String beforeJson = toJson(existingBreakdowns.stream()
                 .map(ClientAllocationBreakdownDto::fromEntity)
                 .toList());
         String afterJson = toJson(proposedBreakdowns);
 
+        // Save adjusted data to Client Allocation Breakdown with status=NEW
+        upsertClientAllocationBreakdowns(order, proposedBreakdowns);
+
+        // Save to amend log
         amendLogService.recordAmendment(
                 clientOrderId,
                 AmendmentObjectType.CLIENT_ALLOCATION_BREAKDOWN,
@@ -145,11 +151,63 @@ public class ClientAllocationService {
                 .map(item -> {
                     ClientAllocationBreakdownEntity entity = mapToEntity(order, item);
                     // Set status to ACCEPTED when approving
-                    entity.setAllocationStatus(AllocationStatus.ACCEPTED);
+                    entity.setClientAllocationStatus(ClientAllocationStatus.ACCEPTED);
                     return entity;
                 })
                 .collect(Collectors.toList());
         breakdownRepository.saveAll(entities);
+    }
+
+    private void upsertClientAllocationBreakdowns(TraderOrderEntity order, List<ClientAllocationBreakdownRequest> breakdownRequests) {
+        // Get existing breakdowns for this order
+        List<ClientAllocationBreakdownEntity> existingBreakdowns = breakdownRepository
+                .findByOrderClientOrderId(order.getClientOrderId());
+        
+        // Create a map of existing breakdowns by account number and country code for quick lookup
+        var existingMap = existingBreakdowns.stream()
+                .collect(Collectors.toMap(
+                        b -> b.getCountryCode() + "|" + b.getAccountNumber(),
+                        b -> b,
+                        (existing, replacement) -> existing
+                ));
+
+        // Upsert breakdowns from request with status=NEW
+        for (ClientAllocationBreakdownRequest request : breakdownRequests) {
+            String key = request.getCountryCode() + "|" + request.getAccountNumber();
+            ClientAllocationBreakdownEntity breakdown = existingMap.get(key);
+            
+            if (breakdown == null) {
+                breakdown = ClientAllocationBreakdownEntity.builder()
+                        .order(order)
+                        .countryCode(request.getCountryCode())
+                        .accountNumber(request.getAccountNumber())
+                        .build();
+            }
+            
+            breakdown.setOrderQuantity(request.getOrderQuantity());
+            breakdown.setFinalAllocation(request.getFinalAllocation());
+            breakdown.setAllocationPercentage(request.getAllocationPercentage());
+            breakdown.setEstimatedOrderSize(request.getEstimatedOrderSize());
+            breakdown.setYieldLimit(request.getYieldLimit());
+            breakdown.setSpreadLimit(request.getSpreadLimit());
+            breakdown.setSizeLimit(request.getSizeLimit());
+            breakdown.setClientAllocationStatus(ClientAllocationStatus.NEW);
+            
+            breakdownRepository.save(breakdown);
+        }
+
+        // Remove breakdowns that are no longer in the request
+        List<String> requestKeys = breakdownRequests.stream()
+                .map(b -> b.getCountryCode() + "|" + b.getAccountNumber())
+                .collect(Collectors.toList());
+        
+        List<ClientAllocationBreakdownEntity> toDelete = existingBreakdowns.stream()
+                .filter(b -> !requestKeys.contains(b.getCountryCode() + "|" + b.getAccountNumber()))
+                .collect(Collectors.toList());
+        
+        if (!toDelete.isEmpty()) {
+            breakdownRepository.deleteAll(toDelete);
+        }
     }
 
     private ClientAllocationBreakdownEntity mapToEntity(TraderOrderEntity order, ClientAllocationBreakdownRequest dto) {

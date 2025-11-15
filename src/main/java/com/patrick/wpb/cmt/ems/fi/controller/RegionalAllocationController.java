@@ -58,7 +58,7 @@ public class RegionalAllocationController {
                 TraderOrderSummaryDto.fromEntity(
                         regionalAllocationService.submitForApproval(
                                 clientOrderId,
-                                request.getClientAllocationBreakdowns(),
+                                request.getRegionalAllocationBreakdowns(),
                                 request.getFinalPricedAllocationBreakdowns(),
                                 request.getFinalRegionalAllocations(),
                                 request.getChangedBy(),

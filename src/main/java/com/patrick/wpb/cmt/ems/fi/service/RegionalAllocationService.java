@@ -1,17 +1,17 @@
 package com.patrick.wpb.cmt.ems.fi.service;
 
-import com.patrick.wpb.cmt.ems.fi.dto.ClientAllocationBreakdownRequest;
 import com.patrick.wpb.cmt.ems.fi.dto.FinalPricedAllocationBreakdownRequest;
 import com.patrick.wpb.cmt.ems.fi.dto.FinalRegionalAllocationRequest;
-import com.patrick.wpb.cmt.ems.fi.entity.ClientAllocationBreakdownEntity;
+import com.patrick.wpb.cmt.ems.fi.dto.RegionalAllocationBreakdownRequest;
 import com.patrick.wpb.cmt.ems.fi.entity.FinalPricedAllocationBreakdownEntity;
 import com.patrick.wpb.cmt.ems.fi.entity.FinalRegionalAllocationEntity;
+import com.patrick.wpb.cmt.ems.fi.entity.RegionalAllocationBreakdownEntity;
 import com.patrick.wpb.cmt.ems.fi.entity.RegionalAllocationEntity;
 import com.patrick.wpb.cmt.ems.fi.entity.TraderOrderEntity;
-import com.patrick.wpb.cmt.ems.fi.enums.AllocationStatus;
 import com.patrick.wpb.cmt.ems.fi.enums.IPOOrderStatus;
 import com.patrick.wpb.cmt.ems.fi.enums.IPOOrderSubStatus;
-import com.patrick.wpb.cmt.ems.fi.repo.ClientAllocationBreakdownRepository;
+import com.patrick.wpb.cmt.ems.fi.enums.RegionalAllocationStatus;
+import com.patrick.wpb.cmt.ems.fi.repo.RegionalAllocationBreakdownRepository;
 import com.patrick.wpb.cmt.ems.fi.repo.FinalPricedAllocationBreakdownRepository;
 import com.patrick.wpb.cmt.ems.fi.repo.FinalRegionalAllocationRepository;
 import com.patrick.wpb.cmt.ems.fi.repo.RegionalAllocationRepository;
@@ -29,7 +29,7 @@ public class RegionalAllocationService {
 
     private final RegionalAllocationRepository regionalAllocationRepository;
     private final TraderOrderRepository traderOrderRepository;
-    private final ClientAllocationBreakdownRepository clientAllocationBreakdownRepository;
+    private final RegionalAllocationBreakdownRepository regionalAllocationBreakdownRepository;
     private final FinalPricedAllocationBreakdownRepository finalPricedAllocationBreakdownRepository;
     private final FinalRegionalAllocationRepository finalRegionalAllocationRepository;
     private final StatusService statusService;
@@ -69,7 +69,7 @@ public class RegionalAllocationService {
 
     @Transactional
     public TraderOrderEntity submitForApproval(String clientOrderId,
-                                               List<ClientAllocationBreakdownRequest> clientAllocationBreakdowns,
+                                               List<RegionalAllocationBreakdownRequest> regionalAllocationBreakdowns,
                                                List<FinalPricedAllocationBreakdownRequest> finalPricedAllocationBreakdowns,
                                                List<FinalRegionalAllocationRequest> finalRegionalAllocations,
                                                String changedBy,
@@ -86,8 +86,8 @@ public class RegionalAllocationService {
             throw new IllegalStateException("Order is not in pending regional allocation status.");
         }
 
-        // Upsert Client Allocation Breakdown records with status=NEW from request
-        upsertClientAllocationBreakdowns(order, clientAllocationBreakdowns);
+        // Upsert Regional Allocation Breakdown records with status=NEW from request
+        upsertRegionalAllocationBreakdowns(order, regionalAllocationBreakdowns);
 
         // Upsert Final Priced Allocation Breakdowns from request (one per country: HK, SG)
         upsertFinalPricedAllocationBreakdowns(order, finalPricedAllocationBreakdowns);
@@ -117,11 +117,11 @@ public class RegionalAllocationService {
             throw new IllegalStateException("Order is not pending regional allocation approval.");
         }
 
-        // Update Client Allocation Breakdown status to ACCEPTED
-        List<ClientAllocationBreakdownEntity> breakdowns = clientAllocationBreakdownRepository
+        // Update Regional Allocation Breakdown status to ACCEPTED
+        List<RegionalAllocationBreakdownEntity> breakdowns = regionalAllocationBreakdownRepository
                 .findByOrderClientOrderId(clientOrderId);
-        breakdowns.forEach(breakdown -> breakdown.setAllocationStatus(AllocationStatus.ACCEPTED));
-        clientAllocationBreakdownRepository.saveAll(breakdowns);
+        breakdowns.forEach(breakdown -> breakdown.setRegionalAllocationStatus(RegionalAllocationStatus.ACCEPTED));
+        regionalAllocationBreakdownRepository.saveAll(breakdowns);
 
         return statusService.updateStatus(
                 clientOrderId,
@@ -145,11 +145,11 @@ public class RegionalAllocationService {
             throw new IllegalStateException("Order is not pending regional allocation approval.");
         }
 
-        // Update Client Allocation Breakdown status to NEW
-        List<ClientAllocationBreakdownEntity> breakdowns = clientAllocationBreakdownRepository
+        // Update Regional Allocation Breakdown status to NEW
+        List<RegionalAllocationBreakdownEntity> breakdowns = regionalAllocationBreakdownRepository
                 .findByOrderClientOrderId(clientOrderId);
-        breakdowns.forEach(breakdown -> breakdown.setAllocationStatus(AllocationStatus.NEW));
-        clientAllocationBreakdownRepository.saveAll(breakdowns);
+        breakdowns.forEach(breakdown -> breakdown.setRegionalAllocationStatus(RegionalAllocationStatus.NEW));
+        regionalAllocationBreakdownRepository.saveAll(breakdowns);
 
         return statusService.updateStatus(
                 clientOrderId,
@@ -172,9 +172,9 @@ public class RegionalAllocationService {
         }
     }
 
-    private void upsertClientAllocationBreakdowns(TraderOrderEntity order, List<ClientAllocationBreakdownRequest> breakdownRequests) {
+    private void upsertRegionalAllocationBreakdowns(TraderOrderEntity order, List<RegionalAllocationBreakdownRequest> breakdownRequests) {
         // Get existing breakdowns for this order
-        List<ClientAllocationBreakdownEntity> existingBreakdowns = clientAllocationBreakdownRepository
+        List<RegionalAllocationBreakdownEntity> existingBreakdowns = regionalAllocationBreakdownRepository
                 .findByOrderClientOrderId(order.getClientOrderId());
         
         // Create a map of existing breakdowns by account number and country code for quick lookup
@@ -186,12 +186,12 @@ public class RegionalAllocationService {
                 ));
 
         // Upsert breakdowns from request
-        for (ClientAllocationBreakdownRequest request : breakdownRequests) {
+        for (RegionalAllocationBreakdownRequest request : breakdownRequests) {
             String key = request.getCountryCode() + "|" + request.getAccountNumber();
-            ClientAllocationBreakdownEntity breakdown = existingMap.get(key);
+            RegionalAllocationBreakdownEntity breakdown = existingMap.get(key);
             
             if (breakdown == null) {
-                breakdown = ClientAllocationBreakdownEntity.builder()
+                breakdown = RegionalAllocationBreakdownEntity.builder()
                         .order(order)
                         .countryCode(request.getCountryCode())
                         .accountNumber(request.getAccountNumber())
@@ -205,9 +205,9 @@ public class RegionalAllocationService {
             breakdown.setYieldLimit(request.getYieldLimit());
             breakdown.setSpreadLimit(request.getSpreadLimit());
             breakdown.setSizeLimit(request.getSizeLimit());
-            breakdown.setAllocationStatus(AllocationStatus.NEW);
+            breakdown.setRegionalAllocationStatus(RegionalAllocationStatus.NEW);
             
-            clientAllocationBreakdownRepository.save(breakdown);
+            regionalAllocationBreakdownRepository.save(breakdown);
         }
 
         // Remove breakdowns that are no longer in the request
@@ -215,12 +215,12 @@ public class RegionalAllocationService {
                 .map(b -> b.getCountryCode() + "|" + b.getAccountNumber())
                 .collect(Collectors.toList());
         
-        List<ClientAllocationBreakdownEntity> toDelete = existingBreakdowns.stream()
+        List<RegionalAllocationBreakdownEntity> toDelete = existingBreakdowns.stream()
                 .filter(b -> !requestKeys.contains(b.getCountryCode() + "|" + b.getAccountNumber()))
                 .collect(Collectors.toList());
         
         if (!toDelete.isEmpty()) {
-            clientAllocationBreakdownRepository.deleteAll(toDelete);
+            regionalAllocationBreakdownRepository.deleteAll(toDelete);
         }
     }
 

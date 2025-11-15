@@ -16,7 +16,7 @@ public class SubmitRegionalAllocationRequest {
 
     @NotEmpty
     @Valid
-    private List<ClientAllocationBreakdownRequest> clientAllocationBreakdowns;
+    private List<RegionalAllocationBreakdownRequest> regionalAllocationBreakdowns;
 
     @NotEmpty
     @Valid

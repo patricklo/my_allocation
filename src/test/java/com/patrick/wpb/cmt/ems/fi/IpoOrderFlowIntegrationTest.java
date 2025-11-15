@@ -5,15 +5,19 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.patrick.wpb.cmt.ems.fi.dto.ClientAllocationBreakdownRequest;
 import com.patrick.wpb.cmt.ems.fi.dto.FinalPricedAllocationBreakdownRequest;
 import com.patrick.wpb.cmt.ems.fi.dto.FinalRegionalAllocationRequest;
+import com.patrick.wpb.cmt.ems.fi.dto.RegionalAllocationBreakdownRequest;
 import com.patrick.wpb.cmt.ems.fi.entity.ClientAllocationBreakdownEntity;
 import com.patrick.wpb.cmt.ems.fi.entity.FinalPricedAllocationBreakdownEntity;
 import com.patrick.wpb.cmt.ems.fi.entity.FinalRegionalAllocationEntity;
+import com.patrick.wpb.cmt.ems.fi.entity.RegionalAllocationBreakdownEntity;
 import com.patrick.wpb.cmt.ems.fi.entity.TraderOrderEntity;
 import com.patrick.wpb.cmt.ems.fi.entity.TraderSubOrderEntity;
-import com.patrick.wpb.cmt.ems.fi.enums.AllocationStatus;
+import com.patrick.wpb.cmt.ems.fi.enums.ClientAllocationStatus;
 import com.patrick.wpb.cmt.ems.fi.enums.IPOOrderStatus;
 import com.patrick.wpb.cmt.ems.fi.enums.IPOOrderSubStatus;
+import com.patrick.wpb.cmt.ems.fi.enums.RegionalAllocationStatus;
 import com.patrick.wpb.cmt.ems.fi.repo.ClientAllocationBreakdownRepository;
+import com.patrick.wpb.cmt.ems.fi.repo.RegionalAllocationBreakdownRepository;
 import com.patrick.wpb.cmt.ems.fi.repo.FinalPricedAllocationBreakdownRepository;
 import com.patrick.wpb.cmt.ems.fi.repo.FinalRegionalAllocationRepository;
 import com.patrick.wpb.cmt.ems.fi.repo.TraderOrderRepository;
@@ -41,6 +45,9 @@ class IpoOrderFlowIntegrationTest {
     private ClientAllocationBreakdownRepository clientAllocationBreakdownRepository;
 
     @Autowired
+    private RegionalAllocationBreakdownRepository regionalAllocationBreakdownRepository;
+
+    @Autowired
     private FinalPricedAllocationBreakdownRepository finalPricedAllocationBreakdownRepository;
 
     @Autowired
@@ -59,6 +66,7 @@ class IpoOrderFlowIntegrationTest {
     void setUp() {
         finalPricedAllocationBreakdownRepository.deleteAll();
         finalRegionalAllocationRepository.deleteAll();
+        regionalAllocationBreakdownRepository.deleteAll();
         clientAllocationBreakdownRepository.deleteAll();
         traderOrderRepository.deleteAll();
 
@@ -93,9 +101,9 @@ class IpoOrderFlowIntegrationTest {
         );
 
         // Prepare breakdown data for submission
-        List<ClientAllocationBreakdownRequest> clientBreakdowns = List.of(
-                buildClientAllocationRequest("HK", "ACCOUNT-HK", "120", "120"),
-                buildClientAllocationRequest("SG", "ACCOUNT-SG", "80", "80")
+        List<RegionalAllocationBreakdownRequest> regionalBreakdowns = List.of(
+                buildRegionalAllocationRequest("HK", "ACCOUNT-HK", "120", "120"),
+                buildRegionalAllocationRequest("SG", "ACCOUNT-SG", "80", "80")
         );
         
         List<FinalPricedAllocationBreakdownRequest> pricedBreakdowns = List.of(
@@ -109,19 +117,19 @@ class IpoOrderFlowIntegrationTest {
 
         TraderOrderEntity pendingApproval = regionalAllocationService.submitForApproval(
                 groupedOrder.getClientOrderId(),
-                clientBreakdowns,
+                regionalBreakdowns,
                 pricedBreakdowns,
                 regionalAllocations,
                 "approver",
                 "Submit regional allocation");
         assertThat(pendingApproval.getSubStatus()).isEqualTo(IPOOrderSubStatus.PENDING_REGIONAL_ALLOCATION_APPROVAL);
 
-        // Verify breakdowns are created with status=NEW
-        List<ClientAllocationBreakdownEntity> breakdownsAfterSubmit = clientAllocationBreakdownRepository
+        // Verify Regional Allocation Breakdowns are created with status=NEW
+        List<RegionalAllocationBreakdownEntity> breakdownsAfterSubmit = regionalAllocationBreakdownRepository
                 .findByOrderClientOrderId(groupedOrder.getClientOrderId());
         assertThat(breakdownsAfterSubmit).hasSize(2);
-        assertThat(breakdownsAfterSubmit).extracting(ClientAllocationBreakdownEntity::getAllocationStatus)
-                .containsOnly(AllocationStatus.NEW);
+        assertThat(breakdownsAfterSubmit).extracting(RegionalAllocationBreakdownEntity::getRegionalAllocationStatus)
+                .containsOnly(RegionalAllocationStatus.NEW);
 
         // Verify Final Priced Allocation Breakdown is created
         List<FinalPricedAllocationBreakdownEntity> pricedBreakdownsResult = finalPricedAllocationBreakdownRepository
@@ -139,11 +147,11 @@ class IpoOrderFlowIntegrationTest {
         assertThat(clientAllocationPending.getStatus()).isEqualTo(IPOOrderStatus.CLIENT_ALLOCATION);
         assertThat(clientAllocationPending.getSubStatus()).isEqualTo(IPOOrderSubStatus.PENDING_CLIENT_ALLOCATION);
 
-        // Verify breakdowns are updated to ACCEPTED
-        List<ClientAllocationBreakdownEntity> breakdownsAfterApprove = clientAllocationBreakdownRepository
+        // Verify Regional Allocation Breakdowns are updated to ACCEPTED
+        List<RegionalAllocationBreakdownEntity> breakdownsAfterApprove = regionalAllocationBreakdownRepository
                 .findByOrderClientOrderId(groupedOrder.getClientOrderId());
-        assertThat(breakdownsAfterApprove).extracting(ClientAllocationBreakdownEntity::getAllocationStatus)
-                .containsOnly(AllocationStatus.ACCEPTED);
+        assertThat(breakdownsAfterApprove).extracting(RegionalAllocationBreakdownEntity::getRegionalAllocationStatus)
+                .containsOnly(RegionalAllocationStatus.ACCEPTED);
 
         List<ClientAllocationBreakdownRequest> draftBreakdowns = List.of(
                 buildClientAllocationRequest("HK", "ACC-1", "120", "120"),
@@ -169,8 +177,8 @@ class IpoOrderFlowIntegrationTest {
                 .hasSize(2)
                 .extracting(ClientAllocationBreakdownEntity::getFinalAllocation)
                 .containsExactlyInAnyOrder(new BigDecimal("120"), new BigDecimal("80"));
-        assertThat(approvedBreakdowns).extracting(ClientAllocationBreakdownEntity::getAllocationStatus)
-                .containsOnly(AllocationStatus.ACCEPTED);
+        assertThat(approvedBreakdowns).extracting(ClientAllocationBreakdownEntity::getClientAllocationStatus)
+                .containsOnly(ClientAllocationStatus.ACCEPTED);
     }
 
     @Test
@@ -195,8 +203,8 @@ class IpoOrderFlowIntegrationTest {
         );
 
         // Prepare breakdown data for submission
-        List<ClientAllocationBreakdownRequest> clientBreakdowns = List.of(
-                buildClientAllocationRequest("HK", "ACCOUNT-HK", "100", "100")
+        List<RegionalAllocationBreakdownRequest> regionalBreakdowns = List.of(
+                buildRegionalAllocationRequest("HK", "ACCOUNT-HK", "100", "100")
         );
         
         List<FinalPricedAllocationBreakdownRequest> pricedBreakdowns = List.of(
@@ -209,17 +217,17 @@ class IpoOrderFlowIntegrationTest {
 
         regionalAllocationService.submitForApproval(
                 groupedOrder.getClientOrderId(),
-                clientBreakdowns,
+                regionalBreakdowns,
                 pricedBreakdowns,
                 regionalAllocations,
                 "approver",
                 "Submit regional allocation");
 
-        // Verify breakdowns have status NEW
-        List<ClientAllocationBreakdownEntity> breakdownsBeforeReject = clientAllocationBreakdownRepository
+        // Verify Regional Allocation Breakdowns have status NEW
+        List<RegionalAllocationBreakdownEntity> breakdownsBeforeReject = regionalAllocationBreakdownRepository
                 .findByOrderClientOrderId(groupedOrder.getClientOrderId());
-        assertThat(breakdownsBeforeReject).extracting(ClientAllocationBreakdownEntity::getAllocationStatus)
-                .containsOnly(AllocationStatus.NEW);
+        assertThat(breakdownsBeforeReject).extracting(RegionalAllocationBreakdownEntity::getRegionalAllocationStatus)
+                .containsOnly(RegionalAllocationStatus.NEW);
 
         // Reject
         TraderOrderEntity rejectedOrder = regionalAllocationService.reject(
@@ -227,11 +235,11 @@ class IpoOrderFlowIntegrationTest {
         assertThat(rejectedOrder.getStatus()).isEqualTo(IPOOrderStatus.REGIONAL_ALLOCATION);
         assertThat(rejectedOrder.getSubStatus()).isEqualTo(IPOOrderSubStatus.PENDING_REGIONAL_ALLOCATION);
 
-        // Verify breakdowns still have status NEW (not changed on reject, but order status reverted)
-        List<ClientAllocationBreakdownEntity> breakdownsAfterReject = clientAllocationBreakdownRepository
+        // Verify Regional Allocation Breakdowns still have status NEW (not changed on reject, but order status reverted)
+        List<RegionalAllocationBreakdownEntity> breakdownsAfterReject = regionalAllocationBreakdownRepository
                 .findByOrderClientOrderId(groupedOrder.getClientOrderId());
-        assertThat(breakdownsAfterReject).extracting(ClientAllocationBreakdownEntity::getAllocationStatus)
-                .containsOnly(AllocationStatus.NEW);
+        assertThat(breakdownsAfterReject).extracting(RegionalAllocationBreakdownEntity::getRegionalAllocationStatus)
+                .containsOnly(RegionalAllocationStatus.NEW);
     }
 
     private TraderOrderEntity buildOrder(String clientOrderId, String countryCode) {
@@ -255,6 +263,23 @@ class IpoOrderFlowIntegrationTest {
 
         order.getSubOrders().add(subOrder);
         return order;
+    }
+
+    private RegionalAllocationBreakdownRequest buildRegionalAllocationRequest(String countryCode,
+                                                                              String accountNumber,
+                                                                              String orderQuantity,
+                                                                              String finalAllocation) {
+        RegionalAllocationBreakdownRequest request = new RegionalAllocationBreakdownRequest();
+        request.setCountryCode(countryCode);
+        request.setAccountNumber(accountNumber);
+        request.setOrderQuantity(new BigDecimal(orderQuantity));
+        request.setFinalAllocation(new BigDecimal(finalAllocation));
+        request.setAllocationPercentage(new BigDecimal("0.50"));
+        request.setEstimatedOrderSize(new BigDecimal(orderQuantity));
+        request.setYieldLimit(new BigDecimal("1.50"));
+        request.setSpreadLimit(new BigDecimal("0.25"));
+        request.setSizeLimit(new BigDecimal(orderQuantity));
+        return request;
     }
 
     private ClientAllocationBreakdownRequest buildClientAllocationRequest(String countryCode,

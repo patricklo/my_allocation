@@ -2,7 +2,7 @@ package com.patrick.wpb.cmt.ems.fi.dto;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.patrick.wpb.cmt.ems.fi.entity.ClientAllocationBreakdownEntity;
-import com.patrick.wpb.cmt.ems.fi.enums.AllocationStatus;
+import com.patrick.wpb.cmt.ems.fi.enums.ClientAllocationStatus;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import java.math.BigDecimal;
@@ -25,7 +25,7 @@ public class ClientAllocationBreakdownDto {
     @NotNull
     BigDecimal orderQuantity;
 
-    AllocationStatus allocationStatus;
+    ClientAllocationStatus clientAllocationStatus;
 
     BigDecimal finalAllocation;
 
@@ -45,7 +45,7 @@ public class ClientAllocationBreakdownDto {
                 .countryCode(entity.getCountryCode())
                 .accountNumber(entity.getAccountNumber())
                 .orderQuantity(entity.getOrderQuantity())
-                .allocationStatus(entity.getAllocationStatus())
+                .clientAllocationStatus(entity.getClientAllocationStatus())
                 .finalAllocation(entity.getFinalAllocation())
                 .allocationPercentage(entity.getAllocationPercentage())
                 .estimatedOrderSize(entity.getEstimatedOrderSize())

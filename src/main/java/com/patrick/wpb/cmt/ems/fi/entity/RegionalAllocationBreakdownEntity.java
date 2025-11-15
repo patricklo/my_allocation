@@ -1,7 +1,7 @@
 package com.patrick.wpb.cmt.ems.fi.entity;
 
 import com.patrick.wpb.cmt.ems.fi.entity.base.BaseAuditEntity;
-import com.patrick.wpb.cmt.ems.fi.enums.ClientAllocationStatus;
+import com.patrick.wpb.cmt.ems.fi.enums.RegionalAllocationStatus;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -21,13 +21,13 @@ import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
 
 @Entity
-@Table(name = "client_allocation_breakdown")
+@Table(name = "regional_allocation_breakdown")
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
 @EqualsAndHashCode(callSuper = false)
-public class ClientAllocationBreakdownEntity extends BaseAuditEntity {
+public class RegionalAllocationBreakdownEntity extends BaseAuditEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -41,9 +41,9 @@ public class ClientAllocationBreakdownEntity extends BaseAuditEntity {
     private BigDecimal orderQuantity;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "allocation_status", nullable = false, length = 16)
+    @Column(name = "regional_allocation_status", nullable = false, length = 16)
     @Builder.Default
-    private ClientAllocationStatus clientAllocationStatus = ClientAllocationStatus.NEW;
+    private RegionalAllocationStatus regionalAllocationStatus = RegionalAllocationStatus.NEW;
 
     @Column(name = "country_code", nullable = false, length = 8)
     private String countryCode;

@@ -34,6 +34,23 @@ CREATE TABLE IF NOT EXISTS regional_allocation (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
+CREATE TABLE IF NOT EXISTS regional_allocation_breakdown (
+    id BIGSERIAL PRIMARY KEY,
+    client_order_id VARCHAR(64) NOT NULL REFERENCES trader_order(client_order_id) ON DELETE CASCADE,
+    order_quantity NUMERIC(20, 4) NOT NULL,
+    regional_allocation_status VARCHAR(16) NOT NULL DEFAULT 'NEW',
+    country_code VARCHAR(8) NOT NULL,
+    final_allocation NUMERIC(20, 4),
+    allocation_percentage NUMERIC(7, 4),
+    estimated_order_size NUMERIC(20, 4),
+    yield_limit NUMERIC(9, 4),
+    spread_limit NUMERIC(9, 4),
+    size_limit NUMERIC(20, 4),
+    account_number VARCHAR(64) NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
 CREATE TABLE IF NOT EXISTS client_allocation_breakdown (
     id BIGSERIAL PRIMARY KEY,
     client_order_id VARCHAR(64) NOT NULL REFERENCES trader_order(client_order_id) ON DELETE CASCADE,
@@ -100,6 +117,7 @@ CREATE TABLE IF NOT EXISTS final_regional_allocation (
 );
 
 CREATE INDEX IF NOT EXISTS idx_trader_sub_order_client_order ON trader_sub_order (client_order_id);
+CREATE INDEX IF NOT EXISTS idx_regional_alloc_breakdown_order ON regional_allocation_breakdown (client_order_id);
 CREATE INDEX IF NOT EXISTS idx_client_alloc_breakdown_order ON client_allocation_breakdown (client_order_id);
 CREATE INDEX IF NOT EXISTS idx_final_priced_alloc_order ON final_priced_allocation_breakdown (client_order_id);
 CREATE INDEX IF NOT EXISTS idx_final_regional_alloc_order ON final_regional_allocation (client_order_id);

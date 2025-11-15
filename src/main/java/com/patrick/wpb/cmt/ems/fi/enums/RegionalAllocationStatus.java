@@ -1,12 +1,12 @@
 package com.patrick.wpb.cmt.ems.fi.enums;
 
-public enum AllocationStatus {
+public enum RegionalAllocationStatus {
     NEW("NEW"),
     ACCEPTED("ACCEPTED");
 
     private final String code;
 
-    AllocationStatus(String code) {
+    RegionalAllocationStatus(String code) {
         this.code = code;
     }
 
