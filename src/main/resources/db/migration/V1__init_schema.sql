@@ -75,6 +75,7 @@ CREATE TABLE IF NOT EXISTS client_allocation_amend_log (
     obj_type VARCHAR(32) NOT NULL,
     before_obj JSONB,
     after_obj JSONB,
+    action VARCHAR(32) NOT NULL DEFAULT 'PENDING_APPROVAL',
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     created_by VARCHAR(64) NOT NULL

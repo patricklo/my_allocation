@@ -1,6 +1,7 @@
 package com.patrick.wpb.cmt.ems.fi.entity;
 
 import com.patrick.wpb.cmt.ems.fi.entity.base.BaseAuditEntity;
+import com.patrick.wpb.cmt.ems.fi.enums.AmendmentAction;
 import com.patrick.wpb.cmt.ems.fi.enums.AmendmentObjectType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -47,6 +48,11 @@ public class ClientAllocationAmendLogEntity extends BaseAuditEntity {
     @Lob
     @Column(name = "after_obj")
     private String afterObjectJson;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "action", nullable = false, length = 32)
+    @Builder.Default
+    private AmendmentAction action = AmendmentAction.PENDING_APPROVAL;
 
     @Column(name = "created_by", nullable = false, length = 64)
     private String createdBy;

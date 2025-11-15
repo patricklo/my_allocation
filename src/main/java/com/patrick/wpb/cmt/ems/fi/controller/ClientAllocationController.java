@@ -84,5 +84,15 @@ public class ClientAllocationController {
                 )
         );
     }
+
+    @PostMapping("/{clientOrderId}/client-allocations/reject")
+    public ResponseEntity<TraderOrderSummaryDto> reject(@PathVariable String clientOrderId,
+                                                        @Valid @RequestBody StatusUpdateRequest request) {
+        return ResponseEntity.ok(
+                TraderOrderSummaryDto.fromEntity(
+                        clientAllocationService.reject(clientOrderId, request.getChangedBy(), request.getNote())
+                )
+        );
+    }
 }
 

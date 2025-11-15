@@ -8,6 +8,7 @@ import com.patrick.wpb.cmt.ems.fi.dto.ClientAllocationBreakdownRequest;
 import com.patrick.wpb.cmt.ems.fi.entity.ClientAllocationAmendLogEntity;
 import com.patrick.wpb.cmt.ems.fi.entity.ClientAllocationBreakdownEntity;
 import com.patrick.wpb.cmt.ems.fi.entity.TraderOrderEntity;
+import com.patrick.wpb.cmt.ems.fi.enums.AmendmentAction;
 import com.patrick.wpb.cmt.ems.fi.enums.ClientAllocationStatus;
 import com.patrick.wpb.cmt.ems.fi.enums.AmendmentObjectType;
 import com.patrick.wpb.cmt.ems.fi.enums.IPOOrderStatus;
@@ -132,10 +133,41 @@ public class ClientAllocationService {
 
         applyApprovedBreakdowns(order, approvedBreakdowns);
 
+        // Update amend log action to APPROVED
+        amendLogService.updateAction(clientOrderId, AmendmentAction.APPROVED);
+
         return statusService.updateStatus(
                 clientOrderId,
                 IPOOrderStatus.CLIENT_ALLOCATION,
                 IPOOrderSubStatus.DONE,
+                changedBy,
+                note
+        );
+    }
+
+    @Transactional
+    public TraderOrderEntity reject(String clientOrderId, String changedBy, String note) {
+        TraderOrderEntity order = traderOrderRepository.findById(clientOrderId)
+                .orElseThrow(() -> new IllegalArgumentException("Trader order not found for id " + clientOrderId));
+
+        if (order.getStatus() != IPOOrderStatus.CLIENT_ALLOCATION
+                || order.getSubStatus() != IPOOrderSubStatus.PENDING_CLIENT_ALLOCATION_APPROVAL) {
+            throw new IllegalStateException("Order is not pending client allocation approval.");
+        }
+
+        // Update Client Allocation Breakdown status to NEW
+        List<ClientAllocationBreakdownEntity> breakdowns = breakdownRepository
+                .findByOrderClientOrderId(clientOrderId);
+        breakdowns.forEach(breakdown -> breakdown.setClientAllocationStatus(ClientAllocationStatus.NEW));
+        breakdownRepository.saveAll(breakdowns);
+
+        // Update amend log action to REJECTED
+        amendLogService.updateAction(clientOrderId, AmendmentAction.REJECTED);
+
+        return statusService.updateStatus(
+                clientOrderId,
+                IPOOrderStatus.CLIENT_ALLOCATION,
+                IPOOrderSubStatus.PENDING_CLIENT_ALLOCATION,
                 changedBy,
                 note
         );

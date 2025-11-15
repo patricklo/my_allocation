@@ -6,16 +6,19 @@ import com.patrick.wpb.cmt.ems.fi.dto.ClientAllocationBreakdownRequest;
 import com.patrick.wpb.cmt.ems.fi.dto.FinalPricedAllocationBreakdownRequest;
 import com.patrick.wpb.cmt.ems.fi.dto.FinalRegionalAllocationRequest;
 import com.patrick.wpb.cmt.ems.fi.dto.RegionalAllocationBreakdownRequest;
+import com.patrick.wpb.cmt.ems.fi.entity.ClientAllocationAmendLogEntity;
 import com.patrick.wpb.cmt.ems.fi.entity.ClientAllocationBreakdownEntity;
 import com.patrick.wpb.cmt.ems.fi.entity.FinalPricedAllocationBreakdownEntity;
 import com.patrick.wpb.cmt.ems.fi.entity.FinalRegionalAllocationEntity;
 import com.patrick.wpb.cmt.ems.fi.entity.RegionalAllocationBreakdownEntity;
 import com.patrick.wpb.cmt.ems.fi.entity.TraderOrderEntity;
 import com.patrick.wpb.cmt.ems.fi.entity.TraderSubOrderEntity;
+import com.patrick.wpb.cmt.ems.fi.enums.AmendmentAction;
 import com.patrick.wpb.cmt.ems.fi.enums.ClientAllocationStatus;
 import com.patrick.wpb.cmt.ems.fi.enums.IPOOrderStatus;
 import com.patrick.wpb.cmt.ems.fi.enums.IPOOrderSubStatus;
 import com.patrick.wpb.cmt.ems.fi.enums.RegionalAllocationStatus;
+import com.patrick.wpb.cmt.ems.fi.repo.ClientAllocationAmendLogRepository;
 import com.patrick.wpb.cmt.ems.fi.repo.ClientAllocationBreakdownRepository;
 import com.patrick.wpb.cmt.ems.fi.repo.RegionalAllocationBreakdownRepository;
 import com.patrick.wpb.cmt.ems.fi.repo.FinalPricedAllocationBreakdownRepository;
@@ -45,6 +48,9 @@ class IpoOrderFlowIntegrationTest {
     private ClientAllocationBreakdownRepository clientAllocationBreakdownRepository;
 
     @Autowired
+    private ClientAllocationAmendLogRepository clientAllocationAmendLogRepository;
+
+    @Autowired
     private RegionalAllocationBreakdownRepository regionalAllocationBreakdownRepository;
 
     @Autowired
@@ -67,6 +73,7 @@ class IpoOrderFlowIntegrationTest {
         finalPricedAllocationBreakdownRepository.deleteAll();
         finalRegionalAllocationRepository.deleteAll();
         regionalAllocationBreakdownRepository.deleteAll();
+        clientAllocationAmendLogRepository.deleteAll();
         clientAllocationBreakdownRepository.deleteAll();
         traderOrderRepository.deleteAll();
 
@@ -166,10 +173,20 @@ class IpoOrderFlowIntegrationTest {
                 groupedOrder.getClientOrderId(), draftBreakdowns, "allocator", "Submit client allocation");
         assertThat(pendingClientApproval.getSubStatus()).isEqualTo(IPOOrderSubStatus.PENDING_CLIENT_ALLOCATION_APPROVAL);
 
+        // Verify amend log has action PENDING_APPROVAL after submission
+        ClientAllocationAmendLogEntity amendLogAfterSubmit = clientAllocationAmendLogRepository
+                .findFirstByRefIdOrderByRevisionDesc(groupedOrder.getClientOrderId()).orElseThrow();
+        assertThat(amendLogAfterSubmit.getAction()).isEqualTo(AmendmentAction.PENDING_APPROVAL);
+
         TraderOrderEntity completedOrder = clientAllocationService.approve(
                 groupedOrder.getClientOrderId(), "allocator", "Approve client allocation");
         assertThat(completedOrder.getStatus()).isEqualTo(IPOOrderStatus.CLIENT_ALLOCATION);
         assertThat(completedOrder.getSubStatus()).isEqualTo(IPOOrderSubStatus.DONE);
+
+        // Verify amend log has action APPROVED after approval
+        ClientAllocationAmendLogEntity amendLogAfterApprove = clientAllocationAmendLogRepository
+                .findFirstByRefIdOrderByRevisionDesc(groupedOrder.getClientOrderId()).orElseThrow();
+        assertThat(amendLogAfterApprove.getAction()).isEqualTo(AmendmentAction.APPROVED);
 
         List<ClientAllocationBreakdownEntity> approvedBreakdowns =
                 clientAllocationBreakdownRepository.findByOrderClientOrderId(groupedOrder.getClientOrderId());
@@ -240,6 +257,91 @@ class IpoOrderFlowIntegrationTest {
                 .findByOrderClientOrderId(groupedOrder.getClientOrderId());
         assertThat(breakdownsAfterReject).extracting(RegionalAllocationBreakdownEntity::getRegionalAllocationStatus)
                 .containsOnly(RegionalAllocationStatus.NEW);
+    }
+
+    @Test
+    @Transactional
+    void rejectClientAllocation_revertsStatusAndBreakdowns() {
+        TraderOrderEntity order1 = buildOrder("ORDER-1", "HK");
+        traderOrderRepository.save(order1);
+
+        TraderOrderEntity groupedOrder = traderOrderService.groupOrders(
+                List.of("ORDER-1"), "test-user");
+
+        traderOrderService.proceedToRegionalAllocation(
+                groupedOrder.getClientOrderId(), "test-user", "Proceed to regional");
+
+        regionalAllocationService.upsertAllocation(
+                groupedOrder.getClientOrderId(),
+                new BigDecimal("100"),
+                BigDecimal.ZERO,
+                new BigDecimal("1.50"),
+                "YIELD",
+                new BigDecimal("100")
+        );
+
+        // Prepare breakdown data for regional allocation submission
+        List<RegionalAllocationBreakdownRequest> regionalBreakdowns = List.of(
+                buildRegionalAllocationRequest("HK", "ACCOUNT-HK", "100", "100")
+        );
+        
+        List<FinalPricedAllocationBreakdownRequest> pricedBreakdowns = List.of(
+                buildFinalPricedAllocationRequest("HK", "YIELD", new BigDecimal("99.5"))
+        );
+        
+        List<FinalRegionalAllocationRequest> regionalAllocations = List.of(
+                buildFinalRegionalAllocationRequest("ASIA", new BigDecimal("100"))
+        );
+
+        regionalAllocationService.submitForApproval(
+                groupedOrder.getClientOrderId(),
+                regionalBreakdowns,
+                pricedBreakdowns,
+                regionalAllocations,
+                "approver",
+                "Submit regional allocation");
+
+        regionalAllocationService.approve(
+                groupedOrder.getClientOrderId(), "approver", "Approve regional allocation");
+
+        // Submit client allocation for approval
+        List<ClientAllocationBreakdownRequest> clientBreakdowns = List.of(
+                buildClientAllocationRequest("HK", "ACCOUNT-HK", "100", "100")
+        );
+
+        clientAllocationService.submitForApproval(
+                groupedOrder.getClientOrderId(),
+                clientBreakdowns,
+                "approver",
+                "Submit client allocation");
+
+        // Verify breakdowns have status NEW after submission
+        List<ClientAllocationBreakdownEntity> breakdownsBeforeReject = clientAllocationBreakdownRepository
+                .findByOrderClientOrderId(groupedOrder.getClientOrderId());
+        assertThat(breakdownsBeforeReject).extracting(ClientAllocationBreakdownEntity::getClientAllocationStatus)
+                .containsOnly(ClientAllocationStatus.NEW);
+
+        // Verify amend log has action PENDING_APPROVAL after submission
+        ClientAllocationAmendLogEntity amendLogBeforeReject = clientAllocationAmendLogRepository
+                .findFirstByRefIdOrderByRevisionDesc(groupedOrder.getClientOrderId()).orElseThrow();
+        assertThat(amendLogBeforeReject.getAction()).isEqualTo(AmendmentAction.PENDING_APPROVAL);
+
+        // Reject
+        TraderOrderEntity rejectedOrder = clientAllocationService.reject(
+                groupedOrder.getClientOrderId(), "approver", "Reject client allocation");
+        assertThat(rejectedOrder.getStatus()).isEqualTo(IPOOrderStatus.CLIENT_ALLOCATION);
+        assertThat(rejectedOrder.getSubStatus()).isEqualTo(IPOOrderSubStatus.PENDING_CLIENT_ALLOCATION);
+
+        // Verify Client Allocation Breakdowns still have status NEW (not changed on reject, but order status reverted)
+        List<ClientAllocationBreakdownEntity> breakdownsAfterReject = clientAllocationBreakdownRepository
+                .findByOrderClientOrderId(groupedOrder.getClientOrderId());
+        assertThat(breakdownsAfterReject).extracting(ClientAllocationBreakdownEntity::getClientAllocationStatus)
+                .containsOnly(ClientAllocationStatus.NEW);
+
+        // Verify amend log has action REJECTED after reject
+        ClientAllocationAmendLogEntity amendLogAfterReject = clientAllocationAmendLogRepository
+                .findFirstByRefIdOrderByRevisionDesc(groupedOrder.getClientOrderId()).orElseThrow();
+        assertThat(amendLogAfterReject.getAction()).isEqualTo(AmendmentAction.REJECTED);
     }
 
     private TraderOrderEntity buildOrder(String clientOrderId, String countryCode) {

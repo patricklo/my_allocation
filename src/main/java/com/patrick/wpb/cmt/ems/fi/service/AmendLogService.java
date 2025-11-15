@@ -1,6 +1,7 @@
 package com.patrick.wpb.cmt.ems.fi.service;
 
 import com.patrick.wpb.cmt.ems.fi.entity.ClientAllocationAmendLogEntity;
+import com.patrick.wpb.cmt.ems.fi.enums.AmendmentAction;
 import com.patrick.wpb.cmt.ems.fi.enums.AmendmentObjectType;
 import com.patrick.wpb.cmt.ems.fi.repo.ClientAllocationAmendLogRepository;
 import java.util.Optional;
@@ -30,10 +31,19 @@ public class AmendLogService {
                 .objectType(objectType)
                 .beforeObjectJson(beforeJson)
                 .afterObjectJson(afterJson)
+                .action(AmendmentAction.PENDING_APPROVAL)
                 .createdBy(createdBy)
                 .build();
 
         return amendLogRepository.save(logEntry);
+    }
+
+    @Transactional
+    public void updateAction(String refId, AmendmentAction action) {
+        ClientAllocationAmendLogEntity latestLog = amendLogRepository.findFirstByRefIdOrderByRevisionDesc(refId)
+                .orElseThrow(() -> new IllegalStateException("No amend log found for refId " + refId));
+        latestLog.setAction(action);
+        amendLogRepository.save(latestLog);
     }
 
     @Transactional(readOnly = true)
