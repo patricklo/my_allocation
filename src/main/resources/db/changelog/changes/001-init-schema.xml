@@ -1,0 +1,307 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <changeSet id="001-create-trader-order-table" author="system">
+        <createTable tableName="trader_order">
+            <column name="client_order_id" type="VARCHAR(64)">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="trade_date" type="DATE">
+                <constraints nullable="false"/>
+            </column>
+            <column name="country_code" type="VARCHAR(8)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="status" type="VARCHAR(32)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="sub_status" type="VARCHAR(64)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="original_client_order_id" type="VARCHAR(64)"/>
+            <column name="security_id" type="VARCHAR(64)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="order_quantity" type="NUMERIC(20, 4)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="clean_price" type="NUMERIC(18, 6)"/>
+            <column name="created_at" type="TIMESTAMP WITH TIME ZONE" defaultValueComputed="NOW()"/>
+            <column name="updated_at" type="TIMESTAMP WITH TIME ZONE" defaultValueComputed="NOW()"/>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="002-create-trader-sub-order-table" author="system">
+        <createTable tableName="trader_sub_order">
+            <column name="id" type="BIGSERIAL" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="country_code" type="VARCHAR(8)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="client_order_id" type="VARCHAR(64)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="account_id" type="VARCHAR(64)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="issue_ipo_flag" type="BOOLEAN" defaultValueBoolean="false">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_at" type="TIMESTAMP WITH TIME ZONE" defaultValueComputed="NOW()"/>
+            <column name="updated_at" type="TIMESTAMP WITH TIME ZONE" defaultValueComputed="NOW()"/>
+        </createTable>
+        <addForeignKeyConstraint
+                baseTableName="trader_sub_order"
+                baseColumnNames="client_order_id"
+                constraintName="fk_trader_sub_order_client_order"
+                referencedTableName="trader_order"
+                referencedColumnNames="client_order_id"
+                onDelete="CASCADE"/>
+        <createIndex indexName="idx_trader_sub_order_client_order" tableName="trader_sub_order">
+            <column name="client_order_id"/>
+        </createIndex>
+    </changeSet>
+
+    <changeSet id="003-create-regional-allocation-table" author="system">
+        <createTable tableName="regional_allocation">
+            <column name="client_order_id" type="VARCHAR(64)">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="order_quantity" type="NUMERIC(20, 4)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="hk_order_quantity" type="NUMERIC(20, 4)" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+            <column name="sg_order_quantity" type="NUMERIC(20, 4)" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+            <column name="limit_value" type="NUMERIC(20, 4)"/>
+            <column name="limit_type" type="VARCHAR(32)"/>
+            <column name="size_limit" type="NUMERIC(20, 4)"/>
+            <column name="created_at" type="TIMESTAMP WITH TIME ZONE" defaultValueComputed="NOW()"/>
+            <column name="updated_at" type="TIMESTAMP WITH TIME ZONE" defaultValueComputed="NOW()"/>
+        </createTable>
+        <addForeignKeyConstraint
+                baseTableName="regional_allocation"
+                baseColumnNames="client_order_id"
+                constraintName="fk_regional_allocation_client_order"
+                referencedTableName="trader_order"
+                referencedColumnNames="client_order_id"
+                onDelete="CASCADE"/>
+    </changeSet>
+
+    <changeSet id="004-create-regional-allocation-breakdown-table" author="system">
+        <createTable tableName="regional_allocation_breakdown">
+            <column name="id" type="BIGSERIAL" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="client_order_id" type="VARCHAR(64)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="order_quantity" type="NUMERIC(20, 4)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="regional_allocation_status" type="VARCHAR(16)" defaultValue="NEW">
+                <constraints nullable="false"/>
+            </column>
+            <column name="country_code" type="VARCHAR(8)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="final_allocation" type="NUMERIC(20, 4)"/>
+            <column name="allocation_percentage" type="NUMERIC(7, 4)"/>
+            <column name="estimated_order_size" type="NUMERIC(20, 4)"/>
+            <column name="yield_limit" type="NUMERIC(9, 4)"/>
+            <column name="spread_limit" type="NUMERIC(9, 4)"/>
+            <column name="size_limit" type="NUMERIC(20, 4)"/>
+            <column name="account_number" type="VARCHAR(64)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_at" type="TIMESTAMP WITH TIME ZONE" defaultValueComputed="NOW()"/>
+            <column name="updated_at" type="TIMESTAMP WITH TIME ZONE" defaultValueComputed="NOW()"/>
+        </createTable>
+        <addForeignKeyConstraint
+                baseTableName="regional_allocation_breakdown"
+                baseColumnNames="client_order_id"
+                constraintName="fk_regional_alloc_breakdown_client_order"
+                referencedTableName="trader_order"
+                referencedColumnNames="client_order_id"
+                onDelete="CASCADE"/>
+        <createIndex indexName="idx_regional_alloc_breakdown_order" tableName="regional_allocation_breakdown">
+            <column name="client_order_id"/>
+        </createIndex>
+    </changeSet>
+
+    <changeSet id="005-create-client-allocation-breakdown-table" author="system">
+        <createTable tableName="client_allocation_breakdown">
+            <column name="id" type="BIGSERIAL" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="client_order_id" type="VARCHAR(64)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="order_quantity" type="NUMERIC(20, 4)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="allocation_status" type="VARCHAR(16)" defaultValue="NEW">
+                <constraints nullable="false"/>
+            </column>
+            <column name="country_code" type="VARCHAR(8)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="final_allocation" type="NUMERIC(20, 4)"/>
+            <column name="allocation_percentage" type="NUMERIC(7, 4)"/>
+            <column name="estimated_order_size" type="NUMERIC(20, 4)"/>
+            <column name="yield_limit" type="NUMERIC(9, 4)"/>
+            <column name="spread_limit" type="NUMERIC(9, 4)"/>
+            <column name="size_limit" type="NUMERIC(20, 4)"/>
+            <column name="account_number" type="VARCHAR(64)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_at" type="TIMESTAMP WITH TIME ZONE" defaultValueComputed="NOW()"/>
+            <column name="updated_at" type="TIMESTAMP WITH TIME ZONE" defaultValueComputed="NOW()"/>
+        </createTable>
+        <addForeignKeyConstraint
+                baseTableName="client_allocation_breakdown"
+                baseColumnNames="client_order_id"
+                constraintName="fk_client_alloc_breakdown_client_order"
+                referencedTableName="trader_order"
+                referencedColumnNames="client_order_id"
+                onDelete="CASCADE"/>
+        <createIndex indexName="idx_client_alloc_breakdown_order" tableName="client_allocation_breakdown">
+            <column name="client_order_id"/>
+        </createIndex>
+    </changeSet>
+
+    <changeSet id="006-create-client-allocation-amend-log-table" author="system">
+        <createTable tableName="client_allocation_amend_log">
+            <column name="id" type="BIGSERIAL" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="revision" type="INTEGER">
+                <constraints nullable="false"/>
+            </column>
+            <column name="ref_id" type="VARCHAR(64)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="obj_type" type="VARCHAR(32)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="before_obj" type="JSONB"/>
+            <column name="after_obj" type="JSONB"/>
+            <column name="action" type="VARCHAR(32)" defaultValue="PENDING_APPROVAL">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_at" type="TIMESTAMP WITH TIME ZONE" defaultValueComputed="NOW()"/>
+            <column name="updated_at" type="TIMESTAMP WITH TIME ZONE" defaultValueComputed="NOW()"/>
+            <column name="created_by" type="VARCHAR(64)">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <createIndex indexName="uq_client_alloc_amend_ref_rev" tableName="client_allocation_amend_log" unique="true">
+            <column name="ref_id"/>
+            <column name="revision"/>
+        </createIndex>
+    </changeSet>
+
+    <changeSet id="007-create-trader-order-status-audit-table" author="system">
+        <createTable tableName="trader_order_status_audit">
+            <column name="id" type="BIGSERIAL" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="client_order_id" type="VARCHAR(64)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="from_status" type="VARCHAR(32)"/>
+            <column name="from_sub_status" type="VARCHAR(64)"/>
+            <column name="to_status" type="VARCHAR(32)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="to_sub_status" type="VARCHAR(64)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="changed_by" type="VARCHAR(64)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="changed_at" type="TIMESTAMP WITH TIME ZONE" defaultValueComputed="NOW()"/>
+            <column name="note" type="VARCHAR(256)"/>
+        </createTable>
+        <addForeignKeyConstraint
+                baseTableName="trader_order_status_audit"
+                baseColumnNames="client_order_id"
+                constraintName="fk_trader_order_status_audit_client_order"
+                referencedTableName="trader_order"
+                referencedColumnNames="client_order_id"
+                onDelete="CASCADE"/>
+    </changeSet>
+
+    <changeSet id="008-create-final-priced-allocation-breakdown-table" author="system">
+        <createTable tableName="final_priced_allocation_breakdown">
+            <column name="id" type="BIGSERIAL" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="client_order_id" type="VARCHAR(64)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="limit_type" type="VARCHAR(32)"/>
+            <column name="final_price" type="NUMERIC(18, 6)"/>
+            <column name="country_code" type="VARCHAR(8)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_at" type="TIMESTAMP WITH TIME ZONE" defaultValueComputed="NOW()"/>
+            <column name="updated_at" type="TIMESTAMP WITH TIME ZONE" defaultValueComputed="NOW()"/>
+        </createTable>
+        <addForeignKeyConstraint
+                baseTableName="final_priced_allocation_breakdown"
+                baseColumnNames="client_order_id"
+                constraintName="fk_final_priced_alloc_breakdown_client_order"
+                referencedTableName="trader_order"
+                referencedColumnNames="client_order_id"
+                onDelete="CASCADE"/>
+        <createIndex indexName="idx_final_priced_alloc_order" tableName="final_priced_allocation_breakdown">
+            <column name="client_order_id"/>
+        </createIndex>
+    </changeSet>
+
+    <changeSet id="009-create-final-regional-allocation-table" author="system">
+        <createTable tableName="final_regional_allocation">
+            <column name="id" type="BIGSERIAL" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="client_order_id" type="VARCHAR(64)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="asia_allocation" type="NUMERIC(20, 4)"/>
+            <column name="allocation" type="NUMERIC(20, 4)"/>
+            <column name="market" type="VARCHAR(32)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="effective_order" type="NUMERIC(20, 4)"/>
+            <column name="pro_rata" type="NUMERIC(7, 4)"/>
+            <column name="allocation_amount" type="NUMERIC(20, 4)"/>
+            <column name="created_at" type="TIMESTAMP WITH TIME ZONE" defaultValueComputed="NOW()"/>
+            <column name="updated_at" type="TIMESTAMP WITH TIME ZONE" defaultValueComputed="NOW()"/>
+        </createTable>
+        <addForeignKeyConstraint
+                baseTableName="final_regional_allocation"
+                baseColumnNames="client_order_id"
+                constraintName="fk_final_regional_alloc_client_order"
+                referencedTableName="trader_order"
+                referencedColumnNames="client_order_id"
+                onDelete="CASCADE"/>
+        <createIndex indexName="idx_final_regional_alloc_order" tableName="final_regional_allocation">
+            <column name="client_order_id"/>
+        </createIndex>
+        <addUniqueConstraint
+                tableName="final_regional_allocation"
+                columnNames="client_order_id, market"
+                constraintName="uq_final_regional_alloc_order_market"/>
+    </changeSet>
+
+</databaseChangeLog>
+
