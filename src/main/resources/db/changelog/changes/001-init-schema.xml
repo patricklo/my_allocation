@@ -5,6 +5,22 @@
         xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
         http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
 
+    <!-- Drop tables in reverse dependency order to handle foreign keys -->
+    <changeSet id="000-drop-all-tables" author="system">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="trader_order"/>
+        </preConditions>
+        <dropTable tableName="final_regional_allocation" cascadeConstraints="true"/>
+        <dropTable tableName="final_priced_allocation_breakdown" cascadeConstraints="true"/>
+        <dropTable tableName="trader_order_status_audit" cascadeConstraints="true"/>
+        <dropTable tableName="client_allocation_amend_log" cascadeConstraints="true"/>
+        <dropTable tableName="client_allocation_breakdown" cascadeConstraints="true"/>
+        <dropTable tableName="regional_allocation_breakdown" cascadeConstraints="true"/>
+        <dropTable tableName="regional_allocation" cascadeConstraints="true"/>
+        <dropTable tableName="trader_sub_order" cascadeConstraints="true"/>
+        <dropTable tableName="trader_order" cascadeConstraints="true"/>
+    </changeSet>
+
     <changeSet id="001-create-trader-order-table" author="system">
         <createTable tableName="trader_order">
             <column name="client_order_id" type="VARCHAR(64)">
