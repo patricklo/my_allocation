@@ -31,7 +31,7 @@ public class RegionalAllocationEntity extends BaseAuditEntity {
 
     @OneToOne(fetch = FetchType.LAZY)
     @MapsId
-    @JoinColumn(name = "client_order_id")
+    @JoinColumn(name = "client_order_id", referencedColumnName = "client_order_id")
     private TraderOrderEntity order;
 
     @Column(name = "order_quantity", nullable = false, precision = 20, scale = 4)

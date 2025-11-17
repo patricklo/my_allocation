@@ -55,6 +55,13 @@
             <column name="created_at" type="TIMESTAMP WITH TIME ZONE" defaultValueComputed="NOW()"/>
             <column name="updated_at" type="TIMESTAMP WITH TIME ZONE" defaultValueComputed="NOW()"/>
         </createTable>
+        <addForeignKeyConstraint
+                baseTableName="trader_sub_order"
+                baseColumnNames="client_order_id"
+                constraintName="fk_trader_sub_order_client_order"
+                referencedTableName="trader_order"
+                referencedColumnNames="client_order_id"
+                onDelete="NO ACTION"/>
         <createIndex indexName="idx_trader_sub_order_client_order" tableName="trader_sub_order">
             <column name="client_order_id"/>
         </createIndex>
@@ -80,6 +87,13 @@
             <column name="created_at" type="TIMESTAMP WITH TIME ZONE" defaultValueComputed="NOW()"/>
             <column name="updated_at" type="TIMESTAMP WITH TIME ZONE" defaultValueComputed="NOW()"/>
         </createTable>
+        <addForeignKeyConstraint
+                baseTableName="regional_allocation"
+                baseColumnNames="client_order_id"
+                constraintName="fk_regional_allocation_client_order"
+                referencedTableName="trader_order"
+                referencedColumnNames="client_order_id"
+                onDelete="NO ACTION"/>
     </changeSet>
 
     <changeSet id="004-create-regional-allocation-breakdown-table" author="system">
@@ -111,6 +125,13 @@
             <column name="created_at" type="TIMESTAMP WITH TIME ZONE" defaultValueComputed="NOW()"/>
             <column name="updated_at" type="TIMESTAMP WITH TIME ZONE" defaultValueComputed="NOW()"/>
         </createTable>
+        <addForeignKeyConstraint
+                baseTableName="regional_allocation_breakdown"
+                baseColumnNames="client_order_id"
+                constraintName="fk_regional_alloc_breakdown_client_order"
+                referencedTableName="trader_order"
+                referencedColumnNames="client_order_id"
+                onDelete="NO ACTION"/>
         <createIndex indexName="idx_regional_alloc_breakdown_order" tableName="regional_allocation_breakdown">
             <column name="client_order_id"/>
         </createIndex>
@@ -145,6 +166,13 @@
             <column name="created_at" type="TIMESTAMP WITH TIME ZONE" defaultValueComputed="NOW()"/>
             <column name="updated_at" type="TIMESTAMP WITH TIME ZONE" defaultValueComputed="NOW()"/>
         </createTable>
+        <addForeignKeyConstraint
+                baseTableName="client_allocation_breakdown"
+                baseColumnNames="client_order_id"
+                constraintName="fk_client_alloc_breakdown_client_order"
+                referencedTableName="trader_order"
+                referencedColumnNames="client_order_id"
+                onDelete="NO ACTION"/>
         <createIndex indexName="idx_client_alloc_breakdown_order" tableName="client_allocation_breakdown">
             <column name="client_order_id"/>
         </createIndex>
@@ -203,6 +231,13 @@
             <column name="changed_at" type="TIMESTAMP WITH TIME ZONE" defaultValueComputed="NOW()"/>
             <column name="note" type="VARCHAR(256)"/>
         </createTable>
+        <addForeignKeyConstraint
+                baseTableName="trader_order_status_audit"
+                baseColumnNames="client_order_id"
+                constraintName="fk_trader_order_status_audit_client_order"
+                referencedTableName="trader_order"
+                referencedColumnNames="client_order_id"
+                onDelete="NO ACTION"/>
     </changeSet>
 
     <changeSet id="008-create-final-priced-allocation-breakdown-table" author="system">
@@ -221,6 +256,13 @@
             <column name="created_at" type="TIMESTAMP WITH TIME ZONE" defaultValueComputed="NOW()"/>
             <column name="updated_at" type="TIMESTAMP WITH TIME ZONE" defaultValueComputed="NOW()"/>
         </createTable>
+        <addForeignKeyConstraint
+                baseTableName="final_priced_allocation_breakdown"
+                baseColumnNames="client_order_id"
+                constraintName="fk_final_priced_alloc_breakdown_client_order"
+                referencedTableName="trader_order"
+                referencedColumnNames="client_order_id"
+                onDelete="NO ACTION"/>
         <createIndex indexName="idx_final_priced_alloc_order" tableName="final_priced_allocation_breakdown">
             <column name="client_order_id"/>
         </createIndex>
@@ -245,6 +287,13 @@
             <column name="created_at" type="TIMESTAMP WITH TIME ZONE" defaultValueComputed="NOW()"/>
             <column name="updated_at" type="TIMESTAMP WITH TIME ZONE" defaultValueComputed="NOW()"/>
         </createTable>
+        <addForeignKeyConstraint
+                baseTableName="final_regional_allocation"
+                baseColumnNames="client_order_id"
+                constraintName="fk_final_regional_alloc_client_order"
+                referencedTableName="trader_order"
+                referencedColumnNames="client_order_id"
+                onDelete="NO ACTION"/>
         <createIndex indexName="idx_final_regional_alloc_order" tableName="final_regional_allocation">
             <column name="client_order_id"/>
         </createIndex>
