@@ -1,8 +1,13 @@
 package com.patrick.wpb.cmt.ems.fi.service;
 
+import com.patrick.wpb.cmt.ems.fi.dto.FinalPricedAllocationBreakdownDto;
 import com.patrick.wpb.cmt.ems.fi.dto.FinalPricedAllocationBreakdownRequest;
+import com.patrick.wpb.cmt.ems.fi.dto.FinalRegionalAllocationDto;
 import com.patrick.wpb.cmt.ems.fi.dto.FinalRegionalAllocationRequest;
+import com.patrick.wpb.cmt.ems.fi.dto.RegionalAllocationBreakdownDto;
 import com.patrick.wpb.cmt.ems.fi.dto.RegionalAllocationBreakdownRequest;
+import com.patrick.wpb.cmt.ems.fi.dto.RegionalAllocationDetailDto;
+import com.patrick.wpb.cmt.ems.fi.dto.RegionalAllocationDto;
 import com.patrick.wpb.cmt.ems.fi.entity.FinalPricedAllocationBreakdownEntity;
 import com.patrick.wpb.cmt.ems.fi.entity.FinalRegionalAllocationEntity;
 import com.patrick.wpb.cmt.ems.fi.entity.RegionalAllocationBreakdownEntity;
@@ -37,6 +42,44 @@ public class RegionalAllocationService {
     @Transactional(readOnly = true)
     public List<TraderOrderEntity> fetchRegionalAllocationOrders() {
         return traderOrderRepository.findByStatus(IPOOrderStatus.REGIONAL_ALLOCATION);
+    }
+
+    @Transactional(readOnly = true)
+    public RegionalAllocationDetailDto getRegionalAllocationDetail(String clientOrderId) {
+        // Verify order exists
+        traderOrderRepository.findById(clientOrderId)
+                .orElseThrow(() -> new IllegalArgumentException("Trader order not found for id " + clientOrderId));
+
+        // Get Regional Allocation
+        RegionalAllocationEntity regionalAllocation = regionalAllocationRepository.findById(clientOrderId).orElse(null);
+        RegionalAllocationDto regionalAllocationDto = regionalAllocation != null
+                ? RegionalAllocationDto.fromEntity(regionalAllocation)
+                : null;
+
+        // Get Regional Allocation Breakdowns
+        List<RegionalAllocationBreakdownDto> breakdownDtos = regionalAllocationBreakdownRepository
+                .findByOrderClientOrderId(clientOrderId).stream()
+                .map(RegionalAllocationBreakdownDto::fromEntity)
+                .collect(Collectors.toList());
+
+        // Get Final Priced Allocation Breakdowns
+        List<FinalPricedAllocationBreakdownDto> pricedBreakdownDtos = finalPricedAllocationBreakdownRepository
+                .findByOrderClientOrderId(clientOrderId).stream()
+                .map(FinalPricedAllocationBreakdownDto::fromEntity)
+                .collect(Collectors.toList());
+
+        // Get Final Regional Allocations
+        List<FinalRegionalAllocationDto> finalRegionalDtos = finalRegionalAllocationRepository
+                .findByClientOrderId(clientOrderId).stream()
+                .map(FinalRegionalAllocationDto::fromEntity)
+                .collect(Collectors.toList());
+
+        return RegionalAllocationDetailDto.builder()
+                .regionalAllocation(regionalAllocationDto)
+                .regionalAllocationBreakdowns(breakdownDtos)
+                .finalPricedAllocationBreakdowns(pricedBreakdownDtos)
+                .finalRegionalAllocations(finalRegionalDtos)
+                .build();
     }
 
     @Transactional
@@ -199,6 +242,7 @@ public class RegionalAllocationService {
             }
             
             breakdown.setOrderQuantity(request.getOrderQuantity());
+            breakdown.setAllocatedQuantity(request.getAllocatedQuantity());
             breakdown.setFinalAllocation(request.getFinalAllocation());
             breakdown.setAllocationPercentage(request.getAllocationPercentage());
             breakdown.setEstimatedOrderSize(request.getEstimatedOrderSize());

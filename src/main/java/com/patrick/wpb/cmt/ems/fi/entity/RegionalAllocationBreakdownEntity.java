@@ -40,6 +40,9 @@ public class RegionalAllocationBreakdownEntity extends BaseAuditEntity {
     @Column(name = "order_quantity", nullable = false, precision = 20, scale = 4)
     private BigDecimal orderQuantity;
 
+    @Column(name = "allocated_quantity", precision = 20, scale = 4)
+    private BigDecimal allocatedQuantity;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "regional_allocation_status", nullable = false, length = 16)
     @Builder.Default

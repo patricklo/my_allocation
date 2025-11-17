@@ -17,6 +17,8 @@ public class RegionalAllocationBreakdownRequest {
     @NotNull
     private BigDecimal orderQuantity;
 
+    private BigDecimal allocatedQuantity;
+
     @NotNull
     private BigDecimal finalAllocation;
 

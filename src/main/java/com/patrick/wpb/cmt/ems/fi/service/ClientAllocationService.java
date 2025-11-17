@@ -3,17 +3,23 @@ package com.patrick.wpb.cmt.ems.fi.service;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.patrick.wpb.cmt.ems.fi.dto.ClientAllocationAmendLogDto;
 import com.patrick.wpb.cmt.ems.fi.dto.ClientAllocationBreakdownDto;
 import com.patrick.wpb.cmt.ems.fi.dto.ClientAllocationBreakdownRequest;
+import com.patrick.wpb.cmt.ems.fi.dto.ClientAllocationDetailDto;
+import com.patrick.wpb.cmt.ems.fi.dto.RegionalAllocationBreakdownSummaryDto;
 import com.patrick.wpb.cmt.ems.fi.entity.ClientAllocationAmendLogEntity;
 import com.patrick.wpb.cmt.ems.fi.entity.ClientAllocationBreakdownEntity;
+import com.patrick.wpb.cmt.ems.fi.entity.RegionalAllocationBreakdownEntity;
 import com.patrick.wpb.cmt.ems.fi.entity.TraderOrderEntity;
 import com.patrick.wpb.cmt.ems.fi.enums.AmendmentAction;
 import com.patrick.wpb.cmt.ems.fi.enums.ClientAllocationStatus;
 import com.patrick.wpb.cmt.ems.fi.enums.AmendmentObjectType;
 import com.patrick.wpb.cmt.ems.fi.enums.IPOOrderStatus;
 import com.patrick.wpb.cmt.ems.fi.enums.IPOOrderSubStatus;
+import com.patrick.wpb.cmt.ems.fi.repo.ClientAllocationAmendLogRepository;
 import com.patrick.wpb.cmt.ems.fi.repo.ClientAllocationBreakdownRepository;
+import com.patrick.wpb.cmt.ems.fi.repo.RegionalAllocationBreakdownRepository;
 import com.patrick.wpb.cmt.ems.fi.repo.TraderOrderRepository;
 import java.math.BigDecimal;
 import java.util.List;
@@ -28,6 +34,8 @@ public class ClientAllocationService {
 
     private final TraderOrderRepository traderOrderRepository;
     private final ClientAllocationBreakdownRepository breakdownRepository;
+    private final ClientAllocationAmendLogRepository amendLogRepository;
+    private final RegionalAllocationBreakdownRepository regionalAllocationBreakdownRepository;
     private final AmendLogService amendLogService;
     private final StatusService statusService;
     private final ObjectMapper objectMapper;
@@ -49,6 +57,61 @@ public class ClientAllocationService {
     @Transactional(readOnly = true)
     public List<ClientAllocationBreakdownEntity> getBreakdowns(String clientOrderId) {
         return breakdownRepository.findByOrderClientOrderId(clientOrderId);
+    }
+
+    @Transactional(readOnly = true)
+    public ClientAllocationDetailDto getClientAllocationDetail(String clientOrderId) {
+        // Verify order exists
+        traderOrderRepository.findById(clientOrderId)
+                .orElseThrow(() -> new IllegalArgumentException("Trader order not found for id " + clientOrderId));
+
+        // Get Client Allocation Breakdowns
+        List<ClientAllocationBreakdownDto> breakdownDtos = breakdownRepository
+                .findByOrderClientOrderId(clientOrderId).stream()
+                .map(ClientAllocationBreakdownDto::fromEntity)
+                .collect(Collectors.toList());
+
+        // Get Client Allocation Amend Logs
+        List<ClientAllocationAmendLogDto> amendLogDtos = amendLogRepository
+                .findByRefIdOrderByRevisionDesc(clientOrderId).stream()
+                .map(ClientAllocationAmendLogDto::fromEntity)
+                .collect(Collectors.toList());
+
+        // Get Regional Allocation Breakdowns grouped by country code
+        List<RegionalAllocationBreakdownEntity> regionalBreakdowns = regionalAllocationBreakdownRepository
+                .findByOrderClientOrderId(clientOrderId);
+
+        // Group by country code and sum order quantity and allocated quantity
+        List<RegionalAllocationBreakdownSummaryDto> summaryDtos = regionalBreakdowns.stream()
+                .collect(Collectors.groupingBy(
+                        RegionalAllocationBreakdownEntity::getCountryCode,
+                        Collectors.collectingAndThen(
+                                Collectors.toList(),
+                                breakdowns -> {
+                                    BigDecimal totalOrderQty = breakdowns.stream()
+                                            .map(RegionalAllocationBreakdownEntity::getOrderQuantity)
+                                            .filter(qty -> qty != null)
+                                            .reduce(BigDecimal.ZERO, BigDecimal::add);
+                                    BigDecimal totalAllocatedQty = breakdowns.stream()
+                                            .map(RegionalAllocationBreakdownEntity::getAllocatedQuantity)
+                                            .filter(qty -> qty != null)
+                                            .reduce(BigDecimal.ZERO, BigDecimal::add);
+                                    return RegionalAllocationBreakdownSummaryDto.builder()
+                                            .countryCode(breakdowns.get(0).getCountryCode())
+                                            .totalOrderQuantity(totalOrderQty)
+                                            .totalAllocatedQuantity(totalAllocatedQty)
+                                            .build();
+                                }
+                        )
+                ))
+                .values().stream()
+                .collect(Collectors.toList());
+
+        return ClientAllocationDetailDto.builder()
+                .clientAllocationBreakdowns(breakdownDtos)
+                .clientAllocationAmendLogs(amendLogDtos)
+                .regionalAllocationBreakdownSummaries(summaryDtos)
+                .build();
     }
 
     @Transactional

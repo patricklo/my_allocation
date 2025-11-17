@@ -1,5 +1,6 @@
 package com.patrick.wpb.cmt.ems.fi.controller;
 
+import com.patrick.wpb.cmt.ems.fi.dto.RegionalAllocationDetailDto;
 import com.patrick.wpb.cmt.ems.fi.dto.RegionalAllocationDto;
 import com.patrick.wpb.cmt.ems.fi.dto.RegionalAllocationRequest;
 import com.patrick.wpb.cmt.ems.fi.dto.StatusUpdateRequest;
@@ -86,6 +87,11 @@ public class RegionalAllocationController {
                         regionalAllocationService.reject(clientOrderId, request.getChangedBy(), request.getNote())
                 )
         );
+    }
+
+    @GetMapping("/{clientOrderId}/regional-allocation/detail")
+    public ResponseEntity<RegionalAllocationDetailDto> getRegionalAllocationDetail(@PathVariable String clientOrderId) {
+        return ResponseEntity.ok(regionalAllocationService.getRegionalAllocationDetail(clientOrderId));
     }
 }
 

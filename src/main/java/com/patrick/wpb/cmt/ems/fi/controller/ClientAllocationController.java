@@ -1,6 +1,7 @@
 package com.patrick.wpb.cmt.ems.fi.controller;
 
 import com.patrick.wpb.cmt.ems.fi.dto.ClientAllocationBreakdownDto;
+import com.patrick.wpb.cmt.ems.fi.dto.ClientAllocationDetailDto;
 import com.patrick.wpb.cmt.ems.fi.dto.StatusUpdateRequest;
 import com.patrick.wpb.cmt.ems.fi.dto.SubmitClientAllocationRequest;
 import com.patrick.wpb.cmt.ems.fi.dto.TraderOrderSummaryDto;
@@ -93,6 +94,11 @@ public class ClientAllocationController {
                         clientAllocationService.reject(clientOrderId, request.getChangedBy(), request.getNote())
                 )
         );
+    }
+
+    @GetMapping("/{clientOrderId}/client-allocation/detail")
+    public ResponseEntity<ClientAllocationDetailDto> getClientAllocationDetail(@PathVariable String clientOrderId) {
+        return ResponseEntity.ok(clientAllocationService.getClientAllocationDetail(clientOrderId));
     }
 }
 

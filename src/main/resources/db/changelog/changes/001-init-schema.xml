@@ -123,6 +123,7 @@
             <column name="order_quantity" type="NUMERIC(20, 4)">
                 <constraints nullable="false"/>
             </column>
+            <column name="allocated_quantity" type="NUMERIC(20, 4)"/>
             <column name="regional_allocation_status" type="VARCHAR(16)" defaultValue="NEW">
                 <constraints nullable="false"/>
             </column>
