@@ -1,0 +1,64 @@
+@startuml Service Classes
+package "com.patrick.wpb.cmt.ems.fi.service" {
+  class StatusService {
+    - List<StatusTransition> allowedTransitions
+    + TraderOrderEntity updateStatus(String, IPOOrderStatus, IPOOrderSubStatus, String, String)
+    - boolean isValidTransition(IPOOrderStatus, IPOOrderSubStatus, IPOOrderStatus, IPOOrderSubStatus)
+    - void recordStatusChange(TraderOrderEntity, IPOOrderStatus, IPOOrderSubStatus, String, String)
+  }
+
+  class AmendLogService {
+    + ClientAllocationAmendLogEntity recordAmendment(String, AmendmentObjectType, String, String, String)
+    + void updateAction(String, AmendmentAction)
+    + Optional<ClientAllocationAmendLogEntity> getLatestAmendment(String)
+  }
+
+  class TraderOrderService {
+    + TraderOrderEntity groupOrders(List<String>, String, String)
+    + TraderOrderEntity proceedToRegionalAllocation(String, String, String)
+  }
+
+  class RegionalAllocationService {
+    + List<TraderOrderEntity> fetchRegionalAllocationOrders()
+    + RegionalAllocationDetailDto getRegionalAllocationDetail(String)
+    + RegionalAllocationEntity upsertAllocation(String, BigDecimal, BigDecimal, BigDecimal, String, BigDecimal)
+    + TraderOrderEntity submitForApproval(String, List<RegionalAllocationBreakdownRequest>, List<FinalPricedAllocationBreakdownRequest>, List<FinalRegionalAllocationRequest>, String, String)
+    + TraderOrderEntity approve(String, String, String)
+    + TraderOrderEntity reject(String, String, String)
+    - void upsertRegionalAllocationBreakdowns(TraderOrderEntity, List<RegionalAllocationBreakdownRequest>)
+    - void upsertFinalPricedAllocationBreakdowns(TraderOrderEntity, List<FinalPricedAllocationBreakdownRequest>)
+    - void upsertFinalRegionalAllocations(TraderOrderEntity, List<FinalRegionalAllocationRequest>)
+  }
+
+  class ClientAllocationService {
+    + List<TraderOrderEntity> fetchPendingClientAllocations()
+    + List<TraderOrderEntity> fetchPendingClientAllocationApprovals()
+    + ClientAllocationDetailDto getClientAllocationDetail(String)
+    + List<ClientAllocationBreakdownEntity> getBreakdowns(String)
+    + List<ClientAllocationBreakdownEntity> saveDraftAllocations(String, List<ClientAllocationBreakdownRequest>)
+    + TraderOrderEntity submitForApproval(String, List<ClientAllocationBreakdownRequest>, String, String)
+    + TraderOrderEntity approve(String, String, String)
+    + TraderOrderEntity reject(String, String, String)
+    - void upsertClientAllocationBreakdowns(TraderOrderEntity, List<ClientAllocationBreakdownRequest>)
+    - void applyApprovedBreakdowns(TraderOrderEntity, List<ClientAllocationBreakdownEntity>)
+  }
+
+  StatusService --> TraderOrderRepository
+  StatusService --> TraderOrderStatusAuditRepository
+  AmendLogService --> ClientAllocationAmendLogRepository
+  TraderOrderService --> TraderOrderRepository
+  TraderOrderService --> StatusService
+  RegionalAllocationService --> RegionalAllocationRepository
+  RegionalAllocationService --> RegionalAllocationBreakdownRepository
+  RegionalAllocationService --> FinalPricedAllocationBreakdownRepository
+  RegionalAllocationService --> FinalRegionalAllocationRepository
+  RegionalAllocationService --> StatusService
+  ClientAllocationService --> ClientAllocationBreakdownRepository
+  ClientAllocationService --> ClientAllocationAmendLogRepository
+  ClientAllocationService --> RegionalAllocationBreakdownRepository
+  ClientAllocationService --> AmendLogService
+  ClientAllocationService --> StatusService
+}
+
+@enduml
+

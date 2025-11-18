@@ -1,0 +1,28 @@
+@startuml Status Transitions
+[*] --> NEW : Order Created
+
+NEW --> REGIONAL_ALLOCATION : Proceed to Regional Allocation
+note right: Sub Status: PENDING_REGIONAL_ALLOCATION
+
+REGIONAL_ALLOCATION --> REGIONAL_ALLOCATION : Submit for Approval
+note right: Sub Status: PENDING_REGIONAL_ALLOCATION_APPROVAL
+
+REGIONAL_ALLOCATION --> CLIENT_ALLOCATION : Approve
+note right: Sub Status: PENDING_CLIENT_ALLOCATION
+
+REGIONAL_ALLOCATION --> REGIONAL_ALLOCATION : Reject
+note right: Sub Status: PENDING_REGIONAL_ALLOCATION
+
+CLIENT_ALLOCATION --> CLIENT_ALLOCATION : Submit for Approval
+note right: Sub Status: PENDING_CLIENT_ALLOCATION_APPROVAL
+
+CLIENT_ALLOCATION --> CLIENT_ALLOCATION : Approve
+note right: Sub Status: DONE
+
+CLIENT_ALLOCATION --> CLIENT_ALLOCATION : Reject
+note right: Sub Status: PENDING_CLIENT_ALLOCATION
+
+CLIENT_ALLOCATION --> [*] : Completed
+
+@enduml
+

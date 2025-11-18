@@ -1,0 +1,148 @@
+@startuml Database ERD
+!define TABLE(name,desc) class name as "desc" << (T,#FFAAAA) >>
+!define PK(x) <b>PK</b> x
+!define FK(x) <i>FK</b> x
+
+TABLE(trader_order, "Trader Order") {
+  PK(client_order_id) : VARCHAR(64)
+  trade_date : DATE
+  country_code : VARCHAR(8)
+  status : VARCHAR(32)
+  sub_status : VARCHAR(64)
+  original_client_order_id : VARCHAR(64)
+  security_id : VARCHAR(64)
+  order_quantity : NUMERIC(20,4)
+  clean_price : NUMERIC(18,6)
+  created_at : TIMESTAMP
+  updated_at : TIMESTAMP
+  created_by : VARCHAR(64)
+  updated_by : VARCHAR(64)
+}
+
+TABLE(trader_sub_order, "Trader Sub Order") {
+  PK(id) : BIGSERIAL
+  FK(client_order_id) : VARCHAR(64)
+  country_code : VARCHAR(8)
+  account_id : VARCHAR(64)
+  issue_ipo_flag : BOOLEAN
+  created_at : TIMESTAMP
+  updated_at : TIMESTAMP
+}
+
+TABLE(regional_allocation, "Regional Allocation") {
+  PK(client_order_id) : VARCHAR(64)
+  order_quantity : NUMERIC(20,4)
+  hk_order_quantity : NUMERIC(20,4)
+  sg_order_quantity : NUMERIC(20,4)
+  limit_value : NUMERIC(20,4)
+  limit_type : VARCHAR(32)
+  size_limit : NUMERIC(20,4)
+  created_at : TIMESTAMP
+  updated_at : TIMESTAMP
+  created_by : VARCHAR(64)
+  updated_by : VARCHAR(64)
+}
+
+TABLE(regional_allocation_breakdown, "Regional Allocation Breakdown") {
+  PK(id) : BIGSERIAL
+  FK(client_order_id) : VARCHAR(64)
+  order_quantity : NUMERIC(20,4)
+  allocated_quantity : NUMERIC(20,4)
+  regional_allocation_status : VARCHAR(16)
+  country_code : VARCHAR(8)
+  final_allocation : NUMERIC(20,4)
+  allocation_percentage : NUMERIC(7,4)
+  estimated_order_size : NUMERIC(20,4)
+  yield_limit : NUMERIC(9,4)
+  spread_limit : NUMERIC(9,4)
+  size_limit : NUMERIC(20,4)
+  account_number : VARCHAR(64)
+  created_at : TIMESTAMP
+  updated_at : TIMESTAMP
+  created_by : VARCHAR(64)
+  updated_by : VARCHAR(64)
+}
+
+TABLE(client_allocation_breakdown, "Client Allocation Breakdown") {
+  PK(id) : BIGSERIAL
+  FK(client_order_id) : VARCHAR(64)
+  order_quantity : NUMERIC(20,4)
+  client_allocation_status : VARCHAR(16)
+  country_code : VARCHAR(8)
+  final_allocation : NUMERIC(20,4)
+  allocation_percentage : NUMERIC(7,4)
+  estimated_order_size : NUMERIC(20,4)
+  yield_limit : NUMERIC(9,4)
+  spread_limit : NUMERIC(9,4)
+  size_limit : NUMERIC(20,4)
+  account_number : VARCHAR(64)
+  created_at : TIMESTAMP
+  updated_at : TIMESTAMP
+  created_by : VARCHAR(64)
+  updated_by : VARCHAR(64)
+}
+
+TABLE(client_allocation_amend_log, "Client Allocation Amend Log") {
+  PK(id) : BIGSERIAL
+  revision : INTEGER
+  ref_id : VARCHAR(64)
+  obj_type : VARCHAR(32)
+  before_obj_json : TEXT
+  after_obj_json : TEXT
+  action : VARCHAR(32)
+  created_at : TIMESTAMP
+  updated_at : TIMESTAMP
+  created_by : VARCHAR(64)
+  updated_by : VARCHAR(64)
+}
+
+TABLE(final_priced_allocation_breakdown, "Final Priced Allocation Breakdown") {
+  PK(id) : BIGSERIAL
+  FK(client_order_id) : VARCHAR(64)
+  limit_type : VARCHAR(32)
+  final_price : NUMERIC(18,6)
+  country_code : VARCHAR(8)
+  created_at : TIMESTAMP
+  updated_at : TIMESTAMP
+  created_by : VARCHAR(64)
+  updated_by : VARCHAR(64)
+}
+
+TABLE(final_regional_allocation, "Final Regional Allocation") {
+  PK(id) : BIGSERIAL
+  FK(client_order_id) : VARCHAR(64)
+  market : VARCHAR(32)
+  asia_allocation : NUMERIC(20,4)
+  allocation : NUMERIC(20,4)
+  effective_order : NUMERIC(20,4)
+  pro_rata : NUMERIC(7,4)
+  allocation_amount : NUMERIC(20,4)
+  created_at : TIMESTAMP
+  updated_at : TIMESTAMP
+  created_by : VARCHAR(64)
+  updated_by : VARCHAR(64)
+}
+
+TABLE(trader_order_status_audit, "Trader Order Status Audit") {
+  PK(id) : BIGSERIAL
+  FK(client_order_id) : VARCHAR(64)
+  from_status : VARCHAR(32)
+  to_status : VARCHAR(32)
+  from_sub_status : VARCHAR(64)
+  to_sub_status : VARCHAR(64)
+  changed_by : VARCHAR(64)
+  note : TEXT
+  created_at : TIMESTAMP
+}
+
+' Relationships
+trader_order ||--o{ trader_sub_order : "has"
+trader_order ||--o| regional_allocation : "has"
+trader_order ||--o{ regional_allocation_breakdown : "has"
+trader_order ||--o{ client_allocation_breakdown : "has"
+trader_order ||--o{ final_priced_allocation_breakdown : "has"
+trader_order ||--o{ final_regional_allocation : "has"
+trader_order ||--o{ trader_order_status_audit : "has"
+
+@enduml
+

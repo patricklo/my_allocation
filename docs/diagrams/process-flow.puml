@@ -1,0 +1,95 @@
+@startuml IPO Order Allocation Workflow
+start
+
+:Step 1: View Orders;
+note right
+  Status: NEW
+  Sub Status: NONE
+  Issue IPO Flag: true
+end note
+
+:Step 2: Group Orders;
+note right
+  Group by:
+  - Security ID
+  - Trade Date
+  Create grouped order
+  Update Original Client Order Id
+end note
+
+:Step 3: Proceed to Regional Allocation;
+note right
+  Status: REGIONAL_ALLOCATION
+  Sub Status: PENDING_REGIONAL_ALLOCATION
+end note
+
+:Step 4: View Regional Allocation Orders;
+
+:Step 5: Submit for Regional Allocation Approval;
+note right
+  Status: REGIONAL_ALLOCATION
+  Sub Status: PENDING_REGIONAL_ALLOCATION_APPROVAL
+  Upsert:
+  - Regional Allocation Breakdowns (status=NEW)
+  - Final Priced Allocation Breakdowns
+  - Final Regional Allocations
+end note
+
+if (Approved?) then (yes)
+  :Step 6a: Approve Regional Allocation;
+  note right
+    Status: CLIENT_ALLOCATION
+    Sub Status: PENDING_CLIENT_ALLOCATION
+    Update Regional Allocation Breakdown
+    status to ACCEPTED
+  end note
+else (no)
+  :Step 6b: Reject Regional Allocation;
+  note right
+    Status: REGIONAL_ALLOCATION
+    Sub Status: PENDING_REGIONAL_ALLOCATION
+    Update Regional Allocation Breakdown
+    status to NEW
+  end note
+  stop
+endif
+
+:Step 7: View Client Allocation Orders;
+note right
+  Status: CLIENT_ALLOCATION
+  Sub Status: PENDING_CLIENT_ALLOCATION
+end note
+
+:Step 8: Submit Client Allocation for Approval;
+note right
+  Save to Client Allocation Breakdown (status=NEW)
+  Save to Client Allocation Amend Log
+  (action=PENDING_APPROVAL)
+  Status: CLIENT_ALLOCATION
+  Sub Status: PENDING_CLIENT_ALLOCATION_APPROVAL
+end note
+
+if (Approved?) then (yes)
+  :Step 9: Approve Client Allocation;
+  note right
+    Retrieve from Amend Log
+    Update Client Allocation Breakdown
+    Status: CLIENT_ALLOCATION
+    Sub Status: DONE
+    Update Amend Log action to APPROVED
+  end note
+  stop
+else (no)
+  :Step 10: Reject Client Allocation;
+  note right
+    Status: CLIENT_ALLOCATION
+    Sub Status: PENDING_CLIENT_ALLOCATION
+    Update Client Allocation Breakdown
+    status to NEW
+    Update Amend Log action to REJECTED
+  end note
+  stop
+endif
+
+@enduml
+

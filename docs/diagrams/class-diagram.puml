@@ -1,0 +1,130 @@
+@startuml Entity Classes
+package "com.patrick.wpb.cmt.ems.fi.entity" {
+  abstract class BaseAuditEntity {
+    + LocalDateTime createdAt
+    + LocalDateTime updatedAt
+    + String createdBy
+    + String updatedBy
+  }
+
+  class TraderOrderEntity {
+    - String clientOrderId
+    - LocalDate tradeDate
+    - String countryCode
+    - IPOOrderStatus status
+    - IPOOrderSubStatus subStatus
+    - String originalClientOrderId
+    - String securityId
+    - BigDecimal orderQuantity
+    - BigDecimal cleanPrice
+    + List<TraderSubOrderEntity> subOrders
+    + RegionalAllocationEntity regionalAllocation
+    + List<ClientAllocationBreakdownEntity> clientAllocations
+  }
+
+  class TraderSubOrderEntity {
+    - Long id
+    - String countryCode
+    - String accountId
+    - Boolean issueIpoFlag
+  }
+
+  class RegionalAllocationEntity {
+    - String clientOrderId
+    - BigDecimal orderQuantity
+    - BigDecimal hkOrderQuantity
+    - BigDecimal sgOrderQuantity
+    - BigDecimal limitValue
+    - String limitType
+    - BigDecimal sizeLimit
+  }
+
+  class RegionalAllocationBreakdownEntity {
+    - Long id
+    - BigDecimal orderQuantity
+    - BigDecimal allocatedQuantity
+    - RegionalAllocationStatus regionalAllocationStatus
+    - String countryCode
+    - BigDecimal finalAllocation
+    - BigDecimal allocationPercentage
+    - BigDecimal estimatedOrderSize
+    - BigDecimal yieldLimit
+    - BigDecimal spreadLimit
+    - BigDecimal sizeLimit
+    - String accountNumber
+  }
+
+  class ClientAllocationBreakdownEntity {
+    - Long id
+    - BigDecimal orderQuantity
+    - ClientAllocationStatus clientAllocationStatus
+    - String countryCode
+    - BigDecimal finalAllocation
+    - BigDecimal allocationPercentage
+    - BigDecimal estimatedOrderSize
+    - BigDecimal yieldLimit
+    - BigDecimal spreadLimit
+    - BigDecimal sizeLimit
+    - String accountNumber
+  }
+
+  class ClientAllocationAmendLogEntity {
+    - Long id
+    - Integer revision
+    - String refId
+    - AmendmentObjectType objectType
+    - String beforeObjectJson
+    - String afterObjectJson
+    - AmendmentAction action
+  }
+
+  class FinalPricedAllocationBreakdownEntity {
+    - Long id
+    - String limitType
+    - BigDecimal finalPrice
+    - String countryCode
+  }
+
+  class FinalRegionalAllocationEntity {
+    - Long id
+    - String clientOrderId
+    - String market
+    - BigDecimal asiaAllocation
+    - BigDecimal allocation
+    - BigDecimal effectiveOrder
+    - BigDecimal proRata
+    - BigDecimal allocationAmount
+  }
+
+  class TraderOrderStatusAuditEntity {
+    - Long id
+    - String clientOrderId
+    - IPOOrderStatus fromStatus
+    - IPOOrderStatus toStatus
+    - IPOOrderSubStatus fromSubStatus
+    - IPOOrderSubStatus toSubStatus
+    - String changedBy
+    - String note
+  }
+
+  BaseAuditEntity <|-- TraderOrderEntity
+  BaseAuditEntity <|-- TraderSubOrderEntity
+  BaseAuditEntity <|-- RegionalAllocationEntity
+  BaseAuditEntity <|-- RegionalAllocationBreakdownEntity
+  BaseAuditEntity <|-- ClientAllocationBreakdownEntity
+  BaseAuditEntity <|-- ClientAllocationAmendLogEntity
+  BaseAuditEntity <|-- FinalPricedAllocationBreakdownEntity
+  BaseAuditEntity <|-- FinalRegionalAllocationEntity
+  BaseAuditEntity <|-- TraderOrderStatusAuditEntity
+
+  TraderOrderEntity "1" *-- "many" TraderSubOrderEntity
+  TraderOrderEntity "1" --o "0..1" RegionalAllocationEntity
+  TraderOrderEntity "1" *-- "many" RegionalAllocationBreakdownEntity
+  TraderOrderEntity "1" *-- "many" ClientAllocationBreakdownEntity
+  TraderOrderEntity "1" *-- "many" FinalPricedAllocationBreakdownEntity
+  TraderOrderEntity "1" *-- "many" FinalRegionalAllocationEntity
+  TraderOrderEntity "1" *-- "many" TraderOrderStatusAuditEntity
+}
+
+@enduml
+
