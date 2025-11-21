@@ -2,7 +2,8 @@ package com.patrick.wpb.cmt.ems.fi.enums;
 
 public enum ClientAllocationStatus {
     NEW("NEW"),
-    ACCEPTED("ACCEPTED");
+    ACCEPTED("ACCEPTED"),
+    INACTIVE("INACTIVE");
 
     private final String code;
 

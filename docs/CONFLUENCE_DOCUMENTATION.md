@@ -691,7 +691,7 @@ CLIENT_ALLOCATION --> [*] : Completed
 ```
 
 #### 3. Proceed to Regional Allocation
-**Endpoint:** `POST /api/orders/{clientOrderId}/proceed-to-regional-allocation`
+**Endpoint:** `POST /api/orders/{clientOrderId}/proceed-regional-allocation`
 
 **Request Body:**
 ```json
@@ -707,6 +707,31 @@ CLIENT_ALLOCATION --> [*] : Completed
   "clientOrderId": "GROUP-ORDER-001",
   "status": "REGIONAL_ALLOCATION",
   "subStatus": "PENDING_REGIONAL_ALLOCATION"
+}
+```
+
+#### 4. Ungroup Order
+**Endpoint:** `POST /api/orders/{clientOrderId}/ungroup`
+
+**Description:** Ungroup an IPO order at any stage when in REGIONAL_ALLOCATION or CLIENT_ALLOCATION status. This will:
+- Change order status to ACCEPTED with sub-status NONE
+- Mark all Regional Allocation Breakdowns as INACTIVE
+- Mark all Client Allocation Breakdowns as INACTIVE
+
+**Request Body:**
+```json
+{
+  "changedBy": "user123",
+  "note": "Ungrouping order"
+}
+```
+
+**Response:**
+```json
+{
+  "clientOrderId": "GROUP-ORDER-001",
+  "status": "ACCEPTED",
+  "subStatus": "NONE"
 }
 ```
 
@@ -1029,10 +1054,12 @@ All foreign keys are configured with `ON DELETE NO ACTION` to prevent accidental
 ### RegionalAllocationStatus Enum
 - `NEW`: New regional allocation breakdown
 - `ACCEPTED`: Regional allocation approved
+- `INACTIVE`: Regional allocation breakdown marked as inactive (ungrouped)
 
 ### ClientAllocationStatus Enum
 - `NEW`: New client allocation breakdown
 - `ACCEPTED`: Client allocation approved
+- `INACTIVE`: Client allocation breakdown marked as inactive (ungrouped)
 
 ### AmendmentAction Enum
 - `PENDING_APPROVAL`: Amendment pending approval
@@ -1050,6 +1077,10 @@ The `StatusService` enforces the following valid transitions:
 5. `CLIENT_ALLOCATION` + `PENDING_CLIENT_ALLOCATION` → `CLIENT_ALLOCATION` + `PENDING_CLIENT_ALLOCATION_APPROVAL`
 6. `CLIENT_ALLOCATION` + `PENDING_CLIENT_ALLOCATION_APPROVAL` → `CLIENT_ALLOCATION` + `DONE` (Approve)
 7. `CLIENT_ALLOCATION` + `PENDING_CLIENT_ALLOCATION_APPROVAL` → `CLIENT_ALLOCATION` + `PENDING_CLIENT_ALLOCATION` (Reject)
+8. `REGIONAL_ALLOCATION` + `PENDING_REGIONAL_ALLOCATION` → `ACCEPTED` + `NONE` (Ungroup)
+9. `REGIONAL_ALLOCATION` + `PENDING_REGIONAL_ALLOCATION_APPROVAL` → `ACCEPTED` + `NONE` (Ungroup)
+10. `CLIENT_ALLOCATION` + `PENDING_CLIENT_ALLOCATION` → `ACCEPTED` + `NONE` (Ungroup)
+11. `CLIENT_ALLOCATION` + `PENDING_CLIENT_ALLOCATION_APPROVAL` → `ACCEPTED` + `NONE` (Ungroup)
 
 ---
 

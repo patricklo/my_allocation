@@ -1,8 +1,12 @@
 package com.patrick.wpb.cmt.ems.fi.service;
 
 import com.patrick.wpb.cmt.ems.fi.entity.TraderOrderEntity;
+import com.patrick.wpb.cmt.ems.fi.enums.ClientAllocationStatus;
 import com.patrick.wpb.cmt.ems.fi.enums.IPOOrderStatus;
 import com.patrick.wpb.cmt.ems.fi.enums.IPOOrderSubStatus;
+import com.patrick.wpb.cmt.ems.fi.enums.RegionalAllocationStatus;
+import com.patrick.wpb.cmt.ems.fi.repo.ClientAllocationBreakdownRepository;
+import com.patrick.wpb.cmt.ems.fi.repo.RegionalAllocationBreakdownRepository;
 import com.patrick.wpb.cmt.ems.fi.repo.TraderOrderRepository;
 import com.patrick.wpb.cmt.ems.fi.repo.TraderSubOrderRepository;
 import java.math.BigDecimal;
@@ -20,6 +24,8 @@ public class TraderOrderService {
 
     private final TraderOrderRepository traderOrderRepository;
     private final TraderSubOrderRepository traderSubOrderRepository;
+    private final RegionalAllocationBreakdownRepository regionalAllocationBreakdownRepository;
+    private final ClientAllocationBreakdownRepository clientAllocationBreakdownRepository;
     private final StatusService statusService;
 
     @Transactional(readOnly = true)
@@ -87,6 +93,36 @@ public class TraderOrderService {
                 clientOrderId,
                 IPOOrderStatus.REGIONAL_ALLOCATION,
                 IPOOrderSubStatus.PENDING_REGIONAL_ALLOCATION,
+                changedBy,
+                note
+        );
+    }
+
+    @Transactional
+    public TraderOrderEntity ungroupOrder(String clientOrderId, String changedBy, String note) {
+        TraderOrderEntity order = traderOrderRepository.findById(clientOrderId)
+                .orElseThrow(() -> new IllegalArgumentException("Trader order not found for id " + clientOrderId));
+
+        // Validate that order can be ungrouped (must be in REGIONAL_ALLOCATION or CLIENT_ALLOCATION status)
+        if (order.getStatus() != IPOOrderStatus.REGIONAL_ALLOCATION && order.getStatus() != IPOOrderStatus.CLIENT_ALLOCATION) {
+            throw new IllegalStateException("Order can only be ungrouped when in REGIONAL_ALLOCATION or CLIENT_ALLOCATION status");
+        }
+
+        // Mark Regional Allocation Breakdowns as INACTIVE
+        var regionalBreakdowns = regionalAllocationBreakdownRepository.findByOrderClientOrderId(clientOrderId);
+        regionalBreakdowns.forEach(breakdown -> breakdown.setRegionalAllocationStatus(RegionalAllocationStatus.INACTIVE));
+        regionalAllocationBreakdownRepository.saveAll(regionalBreakdowns);
+
+        // Mark Client Allocation Breakdowns as INACTIVE
+        var clientBreakdowns = clientAllocationBreakdownRepository.findByOrderClientOrderId(clientOrderId);
+        clientBreakdowns.forEach(breakdown -> breakdown.setClientAllocationStatus(ClientAllocationStatus.INACTIVE));
+        clientAllocationBreakdownRepository.saveAll(clientBreakdowns);
+
+        // Update order status to ACCEPTED with sub status NONE
+        return statusService.updateStatus(
+                clientOrderId,
+                IPOOrderStatus.ACCEPTED,
+                IPOOrderSubStatus.NONE,
                 changedBy,
                 note
         );

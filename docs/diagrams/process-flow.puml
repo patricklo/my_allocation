@@ -23,6 +23,21 @@ note right
   Sub Status: PENDING_REGIONAL_ALLOCATION
 end note
 
+partition "Ungroup Option" {
+  if (Ungroup Order?) then (yes)
+    :Ungroup Order;
+    note right
+      Status: ACCEPTED
+      Sub Status: NONE
+      Mark Regional/Client Allocation 
+      Breakdowns as INACTIVE
+    end note
+    stop
+  else (no)
+    :Continue with allocation process;
+  endif
+}
+
 :Step 4: View Regional Allocation Orders;
 
 :Step 5: Submit for Regional Allocation Approval;

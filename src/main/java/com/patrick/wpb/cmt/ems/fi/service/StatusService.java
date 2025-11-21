@@ -27,7 +27,12 @@ public class StatusService {
             new StatusTransition(IPOOrderStatus.REGIONAL_ALLOCATION, IPOOrderSubStatus.PENDING_REGIONAL_ALLOCATION_APPROVAL, IPOOrderStatus.REGIONAL_ALLOCATION, IPOOrderSubStatus.PENDING_REGIONAL_ALLOCATION),
             new StatusTransition(IPOOrderStatus.CLIENT_ALLOCATION, IPOOrderSubStatus.PENDING_CLIENT_ALLOCATION, IPOOrderStatus.CLIENT_ALLOCATION, IPOOrderSubStatus.PENDING_CLIENT_ALLOCATION_APPROVAL),
             new StatusTransition(IPOOrderStatus.CLIENT_ALLOCATION, IPOOrderSubStatus.PENDING_CLIENT_ALLOCATION_APPROVAL, IPOOrderStatus.CLIENT_ALLOCATION, IPOOrderSubStatus.DONE),
-            new StatusTransition(IPOOrderStatus.CLIENT_ALLOCATION, IPOOrderSubStatus.PENDING_CLIENT_ALLOCATION_APPROVAL, IPOOrderStatus.CLIENT_ALLOCATION, IPOOrderSubStatus.PENDING_CLIENT_ALLOCATION)
+            new StatusTransition(IPOOrderStatus.CLIENT_ALLOCATION, IPOOrderSubStatus.PENDING_CLIENT_ALLOCATION_APPROVAL, IPOOrderStatus.CLIENT_ALLOCATION, IPOOrderSubStatus.PENDING_CLIENT_ALLOCATION),
+            // Ungroup transitions - from REGIONAL_ALLOCATION or CLIENT_ALLOCATION to ACCEPTED
+            new StatusTransition(IPOOrderStatus.REGIONAL_ALLOCATION, IPOOrderSubStatus.PENDING_REGIONAL_ALLOCATION, IPOOrderStatus.ACCEPTED, IPOOrderSubStatus.NONE),
+            new StatusTransition(IPOOrderStatus.REGIONAL_ALLOCATION, IPOOrderSubStatus.PENDING_REGIONAL_ALLOCATION_APPROVAL, IPOOrderStatus.ACCEPTED, IPOOrderSubStatus.NONE),
+            new StatusTransition(IPOOrderStatus.CLIENT_ALLOCATION, IPOOrderSubStatus.PENDING_CLIENT_ALLOCATION, IPOOrderStatus.ACCEPTED, IPOOrderSubStatus.NONE),
+            new StatusTransition(IPOOrderStatus.CLIENT_ALLOCATION, IPOOrderSubStatus.PENDING_CLIENT_ALLOCATION_APPROVAL, IPOOrderStatus.ACCEPTED, IPOOrderSubStatus.NONE)
     );
 
     @Transactional

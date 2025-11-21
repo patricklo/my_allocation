@@ -24,5 +24,14 @@ note right: Sub Status: PENDING_CLIENT_ALLOCATION
 
 CLIENT_ALLOCATION --> [*] : Completed
 
+' Ungroup transitions
+REGIONAL_ALLOCATION --> ACCEPTED : Ungroup
+note right: Sub Status: NONE\nMark breakdowns INACTIVE
+
+CLIENT_ALLOCATION --> ACCEPTED : Ungroup
+note right: Sub Status: NONE\nMark breakdowns INACTIVE
+
+ACCEPTED --> [*] : Order Accepted
+
 @enduml
 

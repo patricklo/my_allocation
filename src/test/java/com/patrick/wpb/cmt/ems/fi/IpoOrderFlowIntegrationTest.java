@@ -1,6 +1,7 @@
 package com.patrick.wpb.cmt.ems.fi;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.patrick.wpb.cmt.ems.fi.dto.ClientAllocationBreakdownRequest;
 import com.patrick.wpb.cmt.ems.fi.dto.FinalPricedAllocationBreakdownRequest;
@@ -342,6 +343,113 @@ class IpoOrderFlowIntegrationTest {
         ClientAllocationAmendLogEntity amendLogAfterReject = clientAllocationAmendLogRepository
                 .findFirstByRefIdOrderByRevisionDesc(groupedOrder.getClientOrderId()).orElseThrow();
         assertThat(amendLogAfterReject.getAction()).isEqualTo(AmendmentAction.REJECTED);
+    }
+
+    @Test
+    @Transactional
+    void ungroupOrder_fromRegionalAllocation_succeeds() {
+        // Setup: Create a grouped order and proceed to regional allocation
+        TraderOrderEntity groupedOrder = traderOrderService.groupOrders(
+                List.of("ORDER-1", "ORDER-2"), "user123");
+        
+        traderOrderService.proceedToRegionalAllocation(
+                groupedOrder.getClientOrderId(), "user123", "Proceed to regional allocation");
+        
+        // Create some regional allocation breakdowns
+        List<RegionalAllocationBreakdownRequest> regionalBreakdowns = List.of(
+                buildRegionalAllocationRequest("HK", "ACCOUNT-HK", "120", "120"),
+                buildRegionalAllocationRequest("SG", "ACCOUNT-SG", "80", "80")
+        );
+        
+        regionalAllocationService.submitForApproval(
+                groupedOrder.getClientOrderId(),
+                regionalBreakdowns,
+                List.of(),
+                List.of(),
+                "user123",
+                "Submit regional allocation");
+        
+        // Verify breakdowns exist and are NEW
+        List<RegionalAllocationBreakdownEntity> breakdownsBeforeUngroup = regionalAllocationBreakdownRepository
+                .findByOrderClientOrderId(groupedOrder.getClientOrderId());
+        assertThat(breakdownsBeforeUngroup).hasSize(2);
+        assertThat(breakdownsBeforeUngroup).extracting(RegionalAllocationBreakdownEntity::getRegionalAllocationStatus)
+                .containsOnly(RegionalAllocationStatus.NEW);
+        
+        // Ungroup the order
+        TraderOrderEntity ungroupedOrder = traderOrderService.ungroupOrder(
+                groupedOrder.getClientOrderId(), "user123", "Ungroup order");
+        
+        // Verify order status changed to ACCEPTED/NONE
+        assertThat(ungroupedOrder.getStatus()).isEqualTo(IPOOrderStatus.ACCEPTED);
+        assertThat(ungroupedOrder.getSubStatus()).isEqualTo(IPOOrderSubStatus.NONE);
+        
+        // Verify regional allocation breakdowns are marked as INACTIVE
+        List<RegionalAllocationBreakdownEntity> breakdownsAfterUngroup = regionalAllocationBreakdownRepository
+                .findByOrderClientOrderId(groupedOrder.getClientOrderId());
+        assertThat(breakdownsAfterUngroup).hasSize(2);
+        assertThat(breakdownsAfterUngroup).extracting(RegionalAllocationBreakdownEntity::getRegionalAllocationStatus)
+                .containsOnly(RegionalAllocationStatus.INACTIVE);
+    }
+
+    @Test
+    @Transactional
+    void ungroupOrder_fromClientAllocation_succeeds() {
+        // Setup: Create a grouped order and proceed through to client allocation
+        TraderOrderEntity groupedOrder = traderOrderService.groupOrders(
+                List.of("ORDER-1", "ORDER-2"), "user123");
+        
+        // Proceed through regional allocation
+        traderOrderService.proceedToRegionalAllocation(
+                groupedOrder.getClientOrderId(), "user123", "Proceed to regional allocation");
+        
+        List<RegionalAllocationBreakdownRequest> regionalBreakdowns = List.of(
+                buildRegionalAllocationRequest("HK", "ACCOUNT-HK", "120", "120")
+        );
+        
+        regionalAllocationService.submitForApproval(
+                groupedOrder.getClientOrderId(), regionalBreakdowns, List.of(), List.of(),
+                "user123", "Submit regional allocation");
+        
+        regionalAllocationService.approve(
+                groupedOrder.getClientOrderId(), "approver", "Approve regional allocation");
+        
+        // Create client allocation breakdowns
+        List<ClientAllocationBreakdownRequest> clientBreakdowns = List.of(
+                buildClientAllocationRequest("HK", "ACCOUNT-HK", "110", "110")
+        );
+        
+        clientAllocationService.submitForApproval(
+                groupedOrder.getClientOrderId(), clientBreakdowns, "user123", "Submit client allocation");
+        
+        // Verify client allocation breakdowns exist
+        List<ClientAllocationBreakdownEntity> clientBreakdownsBeforeUngroup = clientAllocationBreakdownRepository
+                .findByOrderClientOrderId(groupedOrder.getClientOrderId());
+        assertThat(clientBreakdownsBeforeUngroup).hasSize(1);
+        assertThat(clientBreakdownsBeforeUngroup.get(0).getClientAllocationStatus()).isEqualTo(ClientAllocationStatus.NEW);
+        
+        // Ungroup the order
+        TraderOrderEntity ungroupedOrder = traderOrderService.ungroupOrder(
+                groupedOrder.getClientOrderId(), "user123", "Ungroup order");
+        
+        // Verify order status changed to ACCEPTED/NONE
+        assertThat(ungroupedOrder.getStatus()).isEqualTo(IPOOrderStatus.ACCEPTED);
+        assertThat(ungroupedOrder.getSubStatus()).isEqualTo(IPOOrderSubStatus.NONE);
+        
+        // Verify client allocation breakdowns are marked as INACTIVE
+        List<ClientAllocationBreakdownEntity> clientBreakdownsAfterUngroup = clientAllocationBreakdownRepository
+                .findByOrderClientOrderId(groupedOrder.getClientOrderId());
+        assertThat(clientBreakdownsAfterUngroup).hasSize(1);
+        assertThat(clientBreakdownsAfterUngroup.get(0).getClientAllocationStatus()).isEqualTo(ClientAllocationStatus.INACTIVE);
+    }
+
+    @Test
+    @Transactional
+    void ungroupOrder_invalidStatus_throwsException() {
+        // Try to ungroup an order that's still in NEW status
+        assertThatThrownBy(() -> traderOrderService.ungroupOrder("ORDER-1", "user123", "Invalid ungroup"))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("Order can only be ungrouped when in REGIONAL_ALLOCATION or CLIENT_ALLOCATION status");
     }
 
     private TraderOrderEntity buildOrder(String clientOrderId, String countryCode) {

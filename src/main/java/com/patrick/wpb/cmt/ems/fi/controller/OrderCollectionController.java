@@ -49,5 +49,15 @@ public class OrderCollectionController {
                 )
         );
     }
+
+    @PostMapping("/{clientOrderId}/ungroup")
+    public ResponseEntity<TraderOrderSummaryDto> ungroupOrder(@PathVariable String clientOrderId,
+                                                              @Valid @RequestBody StatusUpdateRequest request) {
+        return ResponseEntity.ok(
+                TraderOrderSummaryDto.fromEntity(
+                        traderOrderService.ungroupOrder(clientOrderId, request.getChangedBy(), request.getNote())
+                )
+        );
+    }
 }
 
