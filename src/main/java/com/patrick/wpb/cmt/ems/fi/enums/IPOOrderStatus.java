@@ -5,7 +5,8 @@ public enum IPOOrderStatus {
     ACCEPTED("Accepted Order"),
     PLACED("Order Placed"),
     REGIONAL_ALLOCATION("Regional Allocation"),
-    CLIENT_ALLOCATION("Client Allocation");
+    CLIENT_ALLOCATION("Client Allocation"),
+    CANCELLED("Cancelled Order");
 
     private final String code;
 

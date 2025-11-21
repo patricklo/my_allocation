@@ -3,6 +3,7 @@ package com.patrick.wpb.cmt.ems.fi.controller;
 import com.patrick.wpb.cmt.ems.fi.dto.GroupOrdersRequest;
 import com.patrick.wpb.cmt.ems.fi.dto.StatusUpdateRequest;
 import com.patrick.wpb.cmt.ems.fi.dto.TraderOrderSummaryDto;
+import com.patrick.wpb.cmt.ems.fi.service.StatusService;
 import com.patrick.wpb.cmt.ems.fi.service.TraderOrderService;
 import jakarta.validation.Valid;
 import java.util.List;
@@ -22,6 +23,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class OrderCollectionController {
 
     private final TraderOrderService traderOrderService;
+    private final StatusService statusService;
 
     @GetMapping("/collection")
     public ResponseEntity<List<TraderOrderSummaryDto>> getOrderCollection() {
@@ -56,6 +58,16 @@ public class OrderCollectionController {
         return ResponseEntity.ok(
                 TraderOrderSummaryDto.fromEntity(
                         traderOrderService.ungroupOrder(clientOrderId, request.getChangedBy(), request.getNote())
+                )
+        );
+    }
+
+    @PostMapping("/{clientOrderId}/cancel")
+    public ResponseEntity<TraderOrderSummaryDto> cancelOrder(@PathVariable String clientOrderId,
+                                                             @Valid @RequestBody StatusUpdateRequest request) {
+        return ResponseEntity.ok(
+                TraderOrderSummaryDto.fromEntity(
+                        statusService.cancelOrder(clientOrderId, request.getChangedBy(), request.getNote())
                 )
         );
     }

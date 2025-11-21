@@ -33,5 +33,13 @@ note right: Sub Status: NONE\nMark breakdowns INACTIVE
 
 ACCEPTED --> [*] : Order Accepted
 
+' Exempt status - CANCELLED can be reached from any status
+NEW --> CANCELLED : Cancel (Exempt)
+REGIONAL_ALLOCATION --> CANCELLED : Cancel (Exempt)
+CLIENT_ALLOCATION --> CANCELLED : Cancel (Exempt)
+ACCEPTED --> CANCELLED : Cancel (Exempt)
+
+CANCELLED --> [*] : Order Cancelled
+
 @enduml
 

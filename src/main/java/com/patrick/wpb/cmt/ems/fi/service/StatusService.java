@@ -9,6 +9,7 @@ import com.patrick.wpb.cmt.ems.fi.repo.TraderOrderStatusAuditRepository;
 import java.time.Instant;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -19,6 +20,11 @@ public class StatusService {
 
     private final TraderOrderRepository traderOrderRepository;
     private final TraderOrderStatusAuditRepository statusAuditRepository;
+
+    // Exempt statuses that can be transitioned to from any status without validation
+    private static final Set<IPOOrderStatus> EXEMPT_TARGET_STATUSES = Set.of(
+            IPOOrderStatus.CANCELLED
+    );
 
     private static final List<StatusTransition> ALLOWED_TRANSITIONS = List.of(
             new StatusTransition(IPOOrderStatus.NEW, IPOOrderSubStatus.NONE, IPOOrderStatus.REGIONAL_ALLOCATION, IPOOrderSubStatus.PENDING_REGIONAL_ALLOCATION),
@@ -72,13 +78,30 @@ public class StatusService {
         return saved;
     }
 
+    /**
+     * Cancel an order - this bypasses normal status transition validation
+     * as CANCELLED is an exempt status that can be reached from any status.
+     */
+    @Transactional
+    public TraderOrderEntity cancelOrder(String clientOrderId, String changedBy, String note) {
+        return updateStatus(clientOrderId, IPOOrderStatus.CANCELLED, IPOOrderSubStatus.NONE, changedBy, note);
+    }
+
     private boolean isTransitionAllowed(IPOOrderStatus fromStatus,
                                         IPOOrderSubStatus fromSubStatus,
                                         IPOOrderStatus toStatus,
                                         IPOOrderSubStatus toSubStatus) {
+        // Allow same status/sub-status (no change)
         if (Objects.equals(fromStatus, toStatus) && Objects.equals(fromSubStatus, toSubStatus)) {
             return true;
         }
+        
+        // Allow transitions to exempt statuses from any status
+        if (EXEMPT_TARGET_STATUSES.contains(toStatus)) {
+            return true;
+        }
+        
+        // Check normal transition rules
         return ALLOWED_TRANSITIONS.stream()
                 .anyMatch(transition -> transition.matches(fromStatus, fromSubStatus, toStatus, toSubStatus));
     }

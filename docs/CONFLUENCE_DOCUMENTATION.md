@@ -735,6 +735,28 @@ CLIENT_ALLOCATION --> [*] : Completed
 }
 ```
 
+#### 5. Cancel Order
+**Endpoint:** `POST /api/orders/{clientOrderId}/cancel`
+
+**Description:** Cancel an IPO order from any status. CANCELLED is an exempt status that bypasses normal status transition validation, allowing cancellation from any current status.
+
+**Request Body:**
+```json
+{
+  "changedBy": "admin123",
+  "note": "Order cancelled due to business requirement"
+}
+```
+
+**Response:**
+```json
+{
+  "clientOrderId": "ORDER-001",
+  "status": "CANCELLED",
+  "subStatus": "NONE"
+}
+```
+
 ### Regional Allocation APIs
 
 #### 4. Get Regional Allocation Orders
@@ -1040,8 +1062,11 @@ All foreign keys are configured with `ON DELETE NO ACTION` to prevent accidental
 
 ### IPOOrderStatus Enum
 - `NEW`: Initial order status
+- `ACCEPTED`: Order accepted/ungrouped
+- `PLACED`: Order placed
 - `REGIONAL_ALLOCATION`: Order is in regional allocation phase
 - `CLIENT_ALLOCATION`: Order is in client allocation phase
+- `CANCELLED`: Order cancelled (exempt status - can be reached from any status)
 
 ### IPOOrderSubStatus Enum
 - `NONE`: No sub-status
@@ -1070,6 +1095,8 @@ All foreign keys are configured with `ON DELETE NO ACTION` to prevent accidental
 
 The `StatusService` enforces the following valid transitions:
 
+**Note:** `CANCELLED` is an **exempt status** that can be reached from any current status without validation, bypassing normal transition rules.
+
 1. `NEW` + `NONE` → `REGIONAL_ALLOCATION` + `PENDING_REGIONAL_ALLOCATION`
 2. `REGIONAL_ALLOCATION` + `PENDING_REGIONAL_ALLOCATION` → `REGIONAL_ALLOCATION` + `PENDING_REGIONAL_ALLOCATION_APPROVAL`
 3. `REGIONAL_ALLOCATION` + `PENDING_REGIONAL_ALLOCATION_APPROVAL` → `CLIENT_ALLOCATION` + `PENDING_CLIENT_ALLOCATION` (Approve)
@@ -1081,6 +1108,7 @@ The `StatusService` enforces the following valid transitions:
 9. `REGIONAL_ALLOCATION` + `PENDING_REGIONAL_ALLOCATION_APPROVAL` → `ACCEPTED` + `NONE` (Ungroup)
 10. `CLIENT_ALLOCATION` + `PENDING_CLIENT_ALLOCATION` → `ACCEPTED` + `NONE` (Ungroup)
 11. `CLIENT_ALLOCATION` + `PENDING_CLIENT_ALLOCATION_APPROVAL` → `ACCEPTED` + `NONE` (Ungroup)
+12. **Any Status** + **Any Sub-Status** → `CANCELLED` + `NONE` (Cancel - Exempt Status)
 
 ---
 
