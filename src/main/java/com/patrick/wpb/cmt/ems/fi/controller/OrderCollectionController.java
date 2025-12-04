@@ -3,6 +3,8 @@ package com.patrick.wpb.cmt.ems.fi.controller;
 import com.patrick.wpb.cmt.ems.fi.dto.GroupOrdersRequest;
 import com.patrick.wpb.cmt.ems.fi.dto.StatusUpdateRequest;
 import com.patrick.wpb.cmt.ems.fi.dto.TraderOrderSummaryDto;
+import com.patrick.wpb.cmt.ems.fi.request.IPOExecRequest;
+import com.patrick.wpb.cmt.ems.fi.service.IPOExecutionService;
 import com.patrick.wpb.cmt.ems.fi.service.StatusService;
 import com.patrick.wpb.cmt.ems.fi.service.TraderOrderService;
 import jakarta.validation.Valid;
@@ -24,6 +26,7 @@ public class OrderCollectionController {
 
     private final TraderOrderService traderOrderService;
     private final StatusService statusService;
+    private final IPOExecutionService ipoExecutionService;
 
     @GetMapping("/collection")
     public ResponseEntity<List<TraderOrderSummaryDto>> getOrderCollection() {
@@ -70,6 +73,18 @@ public class OrderCollectionController {
                         statusService.cancelOrder(clientOrderId, request.getChangedBy(), request.getNote())
                 )
         );
+    }
+
+    @PostMapping("/{clientOrderId}/ipo-execution")
+    public ResponseEntity<List<TraderOrderSummaryDto>> executeIPOOrder(@PathVariable String clientOrderId,
+                                                                        @Valid @RequestBody IPOExecRequest request) {
+        List<TraderOrderSummaryDto> response = ipoExecutionService.executeIPOOrder(
+                clientOrderId, 
+                request
+        ).stream()
+                .map(TraderOrderSummaryDto::fromEntity)
+                .collect(Collectors.toList());
+        return ResponseEntity.ok(response);
     }
 }
 

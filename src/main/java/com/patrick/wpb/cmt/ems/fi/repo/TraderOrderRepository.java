@@ -20,4 +20,6 @@ public interface TraderOrderRepository extends JpaRepository<TraderOrderEntity, 
             String securityId,
             IPOOrderStatus status,
             IPOOrderSubStatus subStatus);
+
+    List<TraderOrderEntity> findByOriginalClientOrderId(String originalClientOrderId);
 }
