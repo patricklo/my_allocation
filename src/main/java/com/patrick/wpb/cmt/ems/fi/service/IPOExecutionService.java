@@ -1,11 +1,10 @@
 package com.patrick.wpb.cmt.ems.fi.service;
 
 import com.patrick.wpb.cmt.ems.fi.entity.TraderOrderEntity;
-import com.patrick.wpb.cmt.ems.fi.enums.IPOOrderStatus;
-import com.patrick.wpb.cmt.ems.fi.enums.IPOOrderSubStatus;
 import com.patrick.wpb.cmt.ems.fi.repo.TraderOrderRepository;
 import com.patrick.wpb.cmt.ems.fi.request.IPOExecRequest;
 import com.patrick.wpb.cmt.ems.fi.request.RegionalCounterpartyExecutionRequest;
+import com.patrick.wpb.cmt.ems.fi.util.TraderOrderCloneUtil;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
@@ -70,19 +69,14 @@ public class IPOExecutionService {
                     .map(TraderOrderEntity::getOrderQuantity)
                     .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-            // Create new group order for this region
+            // Create new group order for this region using clone utility
             String newGroupOrderId = UUID.randomUUID().toString();
-            TraderOrderEntity newGroupOrder = TraderOrderEntity.builder()
-                    .clientOrderId(newGroupOrderId)
-                    .tradeDate(existingGroupOrder.getTradeDate())
-                    .countryCode(targetCountryCode) // New region
-                    .status(IPOOrderStatus.NEW)
-                    .subStatus(IPOOrderSubStatus.NONE)
-                    .securityId(existingGroupOrder.getSecurityId())
-                    .orderQuantity(regionalQuantity) // Sum of regional child order quantities
-                    .cleanPrice(existingGroupOrder.getCleanPrice())
-                    .originalClientOrderId(null) // This is a new group order
-                    .build();
+            TraderOrderEntity newGroupOrder = TraderOrderCloneUtil.clone(
+                    existingGroupOrder,
+                    newGroupOrderId,
+                    targetCountryCode,
+                    regionalQuantity
+            );
 
             TraderOrderEntity savedNewGroupOrder = traderOrderRepository.save(newGroupOrder);
             newGroupOrders.add(savedNewGroupOrder);
