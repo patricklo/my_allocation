@@ -1,6 +1,8 @@
 package com.patrick.wpb.cmt.ems.fi.service;
 
+import com.patrick.wpb.cmt.ems.fi.entity.OrderExecutionDetailEntity;
 import com.patrick.wpb.cmt.ems.fi.entity.TraderOrderEntity;
+import com.patrick.wpb.cmt.ems.fi.repo.OrderExecutionDetailRepository;
 import com.patrick.wpb.cmt.ems.fi.repo.TraderOrderRepository;
 import com.patrick.wpb.cmt.ems.fi.request.IPOExecRequest;
 import com.patrick.wpb.cmt.ems.fi.request.RegionalCounterpartyExecutionRequest;
@@ -8,10 +10,12 @@ import com.patrick.wpb.cmt.ems.fi.util.TraderOrderCloneUtil;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -21,6 +25,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class IPOExecutionService {
 
     private final TraderOrderRepository traderOrderRepository;
+    private final OrderExecutionDetailRepository orderExecutionDetailRepository;
 
     /**
      * Executes IPO group order execution by creating new group orders for specified regions.
@@ -39,6 +44,10 @@ public class IPOExecutionService {
         if (existingGroupOrder.getOriginalClientOrderId() != null) {
             throw new IllegalStateException("Order with id " + existingGroupOrderId + " is not a group order");
         }
+
+        // Find existing execution detail for the group order (to copy execution info)
+        Optional<OrderExecutionDetailEntity> existingExecutionDetail = 
+                orderExecutionDetailRepository.findByClientOrderId(existingGroupOrderId);
 
         // Get all child orders of the existing group order
         List<TraderOrderEntity> childOrders = traderOrderRepository.findByOriginalClientOrderId(existingGroupOrderId);
@@ -81,6 +90,23 @@ public class IPOExecutionService {
             TraderOrderEntity savedNewGroupOrder = traderOrderRepository.save(newGroupOrder);
             newGroupOrders.add(savedNewGroupOrder);
 
+            // Create new OrderExecutionDetailEntity for the new group order
+            if (existingExecutionDetail.isPresent()) {
+                OrderExecutionDetailEntity newExecutionDetail = createExecutionDetail(
+                        existingExecutionDetail.get(),
+                        newGroupOrderId,
+                        regionalQuantity,
+                        regionalRequest.getCounterpartyId(),
+                        request.getBookingCenter()
+                );
+                orderExecutionDetailRepository.save(newExecutionDetail);
+                log.info("Created execution detail {} for new group order {}", 
+                        newExecutionDetail.getExecutionId(), newGroupOrderId);
+            } else {
+                log.warn("No existing execution detail found for group order {}, skipping execution detail creation", 
+                        existingGroupOrderId);
+            }
+
             // Update child orders' originalClientOrderId to point to new group order
             matchingChildOrders.forEach(childOrder -> {
                 childOrder.setOriginalClientOrderId(newGroupOrderId);
@@ -108,6 +134,45 @@ public class IPOExecutionService {
                 existingGroupOrderId, existingGroupOrder.getOrderQuantity().add(totalQuantityToDeduct), newQuantity);
 
         return newGroupOrders;
+    }
+
+    /**
+     * Creates a new OrderExecutionDetailEntity based on existing execution detail.
+     * Copies all fields except executionId, clientOrderId, executedSize, and counterpartyCode.
+     * 
+     * @param source The source execution detail to copy from
+     * @param newClientOrderId The new client order ID for the execution detail
+     * @param executedSize The executed size (quantity) for the new execution detail
+     * @param counterpartyCode Optional counterparty code override
+     * @param bookingCenter Optional booking center override
+     * @return New OrderExecutionDetailEntity
+     */
+    private OrderExecutionDetailEntity createExecutionDetail(OrderExecutionDetailEntity source,
+                                                              String newClientOrderId,
+                                                              BigDecimal executedSize,
+                                                              String counterpartyCode,
+                                                              String bookingCenter) {
+        OrderExecutionDetailEntity newExecutionDetail = new OrderExecutionDetailEntity();
+        
+        // Copy all properties from source using BeanUtils
+        BeanUtils.copyProperties(source, newExecutionDetail);
+        
+        // Override specific fields
+        newExecutionDetail.setExecutionId(UUID.randomUUID().toString());
+        newExecutionDetail.setClientOrderId(newClientOrderId);
+        newExecutionDetail.setExecutedSize(executedSize);
+        
+        // Override counterparty code if provided
+        if (counterpartyCode != null && !counterpartyCode.isEmpty()) {
+            newExecutionDetail.setCounterpartyCode(counterpartyCode);
+        }
+        
+        // Override booking center if provided
+        if (bookingCenter != null && !bookingCenter.isEmpty()) {
+            newExecutionDetail.setBookingCenter(bookingCenter);
+        }
+        
+        return newExecutionDetail;
     }
 }
 
